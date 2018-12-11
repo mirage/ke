@@ -70,12 +70,13 @@ let pp_ols_result ppf result =
   in
   match Analyze.OLS.estimates result with
   | Some estimates ->
-      Fmt.pf ppf "%a per %a = %a" Label.pp
+      Fmt.pf ppf "%a per %a = %a [r²: %a]" Label.pp
         (Analyze.OLS.responder result)
         Fmt.(Dump.list Label.pp)
         (Analyze.OLS.predictors result)
         Fmt.(styled style_by_r_square (Dump.list float))
         estimates
+        Fmt.(option float) (Analyze.OLS.r_square result)
   | None ->
       Fmt.pf ppf "%a per %a = #unable-to-compute" Label.pp
         (Analyze.OLS.responder result)
