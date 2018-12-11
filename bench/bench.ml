@@ -160,7 +160,7 @@ let () =
   in
   let measure_and_analyze test =
     let results =
-      Benchmark.all ~stabilize:true ~quota:(Benchmark.s 1.) ~run:5000 instances test
+      Benchmark.all ~stabilize:true ~quota:(Benchmark.s 2.) ~run:5000 instances test
     in
     List.map
       (fun x -> List.map (Analyze.analyze ols (Measure.label x)) results)
