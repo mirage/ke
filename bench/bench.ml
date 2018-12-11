@@ -73,7 +73,11 @@ let pp_ols_result ppf result =
         (Analyze.OLS.predictors result)
 
 let pp_ransac_result ppf result =
-  Fmt.float ppf (Analyze.RANSAC.mean result)
+  Fmt.pf ppf "%a per %a = %f [error: %f]"
+    Label.pp (Analyze.RANSAC.responder result)
+    Label.pp (Analyze.RANSAC.predictor result)
+    (Analyze.RANSAC.mean result)
+    (Analyze.RANSAC.error result)
 
 let pad n x =
   if String.length x > n then x else x ^ String.make (n - String.length x) ' '
