@@ -1,0 +1,23 @@
+opam-version: "2.0"
+name:         "ke"
+maintainer:   "Romain Calascibetta <romain.calascibetta@gmail.com>"
+authors:      "Romain Calascibetta <romain.calascibetta@gmail.com>"
+homepage:     "https://github.com/dinosaure/ke"
+bug-reports:  "https://github.com/dinosaure/ke/issues"
+dev-repo:     "git+https://github.com/dinosaure/ke.git"
+doc:          "https://dinosaure.github.io/ke/"
+license:      "MIT"
+synopsis:     "Queue implementation"
+
+build: [
+  [ "dune" "subst" ]
+  [ "dune" "build" "-p" name "-j" jobs ]
+  [ "dune" "runtest" "-p" name "-j" jobs ] {with-test}
+]
+
+depends: [
+  "ocaml"      {>= "4.03.0"}
+  "dune"       {build}
+  "fmt"
+  "bigstringaf"
+]
