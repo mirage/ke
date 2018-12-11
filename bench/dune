@@ -1,3 +1,3 @@
 (executable
  (name bench)
- (libraries fmt.tty logs.fmt mtime.clock.os ke bechamel))
+ (libraries fmt.tty logs.fmt mtime.clock.os oclock ke bechamel))
