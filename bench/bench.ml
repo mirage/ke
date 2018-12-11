@@ -26,17 +26,17 @@ let push_rke_n n =
 
 let test_push_fke =
   Test.make_indexed ~name:"Fke.push"
-    ~args:[0; 10; 100; 500; 1000]
+    ~args:[100; 500; 1000; 5000; 10000;]
     push_fke
 
 let test_push_rke =
   Test.make_indexed ~name:"Rke.push"
-    ~args:[0; 10; 100; 500; 1000]
+    ~args:[100; 500; 1000; 5000; 10000;]
     push_rke
 
 let test_push_rke_n =
   Test.make_indexed ~name:"Rke.N.push"
-    ~args:[0; 10; 100; 500; 1000]
+    ~args:[100; 500; 1000; 5000; 10000;]
     push_rke_n
 
 let tests_push = [ test_push_fke; test_push_rke; test_push_rke_n ]
