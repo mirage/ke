@@ -24,6 +24,11 @@ let push_rke_n n =
   let blit src src_off dst dst_off len = Bigstringaf.unsafe_blit_from_string src ~src_off dst ~dst_off ~len in
   Staged.stage (fun () -> Ke.Rke.N.push queue ~blit ~length:String.length raw)
 
+let push_queue n =
+  let queue = Queue.create () in
+  let raw = random n in
+  Staged.stage (fun () -> String.iter (fun chr -> Queue.add chr queue) raw)
+
 let test_push_fke =
   Test.make_indexed ~name:"Fke.push"
     ~args:[100; 500; 1000; 5000; 10000;]
@@ -39,7 +44,12 @@ let test_push_rke_n =
     ~args:[100; 500; 1000; 5000; 10000;]
     push_rke_n
 
-let tests_push = [ test_push_fke; test_push_rke; test_push_rke_n ]
+let test_push_queue =
+  Test.make_indexed ~name:"Queue.push"
+    ~args:[100; 500; 1000; 5000; 10000;]
+    push_queue
+
+let tests_push = [ test_push_fke; test_push_rke; test_push_rke_n; test_push_queue ]
 
 let zip l1 l2 =
   let rec go acc = function
