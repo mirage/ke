@@ -29,6 +29,32 @@ let push_queue n =
   let raw = random n in
   Staged.stage (fun () -> String.iter (fun chr -> Queue.add chr queue) raw)
 
+let push_and_pop_fke n =
+  let raw = random n in
+  let data = List.init n (String.get raw) in
+  Staged.stage (fun () ->
+      let q = List.fold_left Ke.Fke.push Ke.Fke.empty data in
+      let rec go q =
+        if not (Ke.Fke.is_empty q) then
+          let _, q = Ke.Fke.shift q in
+          go q
+        else () in
+      go q)
+
+let push_and_pop_rke n =
+  let queue = Ke.Rke.create ~capacity:n () in
+  let raw = random n in
+  Staged.stage (fun () ->
+      String.iter (Ke.Rke.push queue) raw ;
+      while not (Ke.Rke.is_empty queue) do ignore (Ke.Rke.shift queue) done)
+
+let push_and_pop_queue n =
+  let queue = Queue.create () in
+  let raw = random n in
+  Staged.stage (fun () ->
+      String.iter (fun chr -> Queue.add chr queue) raw ;
+      while not (Queue.is_empty queue) do ignore (Queue.pop queue) done)
+
 let test_push_fke =
   Test.make_indexed ~name:"Fke.push"
     ~args:[100; 500; 1000; 5000; 10000;]
@@ -50,6 +76,26 @@ let test_push_queue =
     push_queue
 
 let tests_push = [ test_push_fke; test_push_rke; test_push_rke_n; test_push_queue ]
+
+let test_push_and_pop_fke =
+  Test.make_indexed ~name:"Fke.push & Fke.shift"
+    ~args:[100; 500; 1000; 5000; 10000;]
+    push_and_pop_fke
+
+let test_push_and_pop_rke =
+  Test.make_indexed ~name:"Rke.push & Rke.shift"
+    ~args:[100; 500; 1000; 5000; 10000;]
+    push_and_pop_rke
+
+let test_push_and_pop_queue =
+  Test.make_indexed ~name:"Queue.push & Queue.pop"
+    ~args:[100; 500; 1000; 5000; 10000;]
+    push_and_pop_queue
+
+let tests_push_and_pop =
+  [ test_push_and_pop_fke
+  ; test_push_and_pop_rke
+  ; test_push_and_pop_queue ]
 
 let zip l1 l2 =
   let rec go acc = function
@@ -156,7 +202,8 @@ let () =
     match Sys.argv with
     | [|_|] -> []
     | [|_; "push"|] -> tests_push
-    | [|_; "all"|] -> tests_push
+    | [|_; "push&pop"|] -> tests_push_and_pop
+    | [|_; "all"|] -> tests_push @ tests_push_and_pop
     | _ -> Fmt.invalid_arg "%s {push|all}" Sys.argv.(1)
   in
   let measure_and_analyze test =
