@@ -84,7 +84,7 @@ let pp_ols_result ppf result =
         (Analyze.OLS.predictors result)
 
 let pp_ransac_result ppf result =
-  Fmt.pf ppf "%a per %a = %04.0f [error: %04.0f]"
+  Fmt.pf ppf "%a per %a = %04.04f [error: %04.04f]"
     Label.pp (Analyze.RANSAC.responder result)
     Label.pp (Analyze.RANSAC.predictor result)
     (Analyze.RANSAC.mean result)
