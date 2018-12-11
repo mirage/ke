@@ -8,6 +8,7 @@ external ( = ) : 'a -> 'a -> bool = "%equal"
 let ( = ) (a : int) b = a = b
 
 let[@inline always] mask t v = v land (t.c - 1)
+let[@inline always] empty t = t.r = t.w
 let[@inline always] size t = t.w - t.r
 let[@inline always] available t = t.c - (t.w - t.r)
 let[@inline always] full t = size t = t.c
@@ -20,6 +21,8 @@ let[@inline always] to_power_of_two v =
   res := !res lor (!res lsr 8) ;
   res := !res lor (!res lsr 16) ;
   succ !res
+
+let is_empty t = (empty[@inlined]) t
 
 let create ?capacity () =
   let capacity = match capacity with

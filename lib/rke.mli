@@ -1,5 +1,6 @@
 type t
 
+val is_empty : t -> bool
 val create : ?capacity:int -> unit -> t
 val push : t -> char -> unit
 val shift : t -> char
