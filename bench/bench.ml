@@ -96,7 +96,7 @@ let pp_ransac_results ppf (test, results) =
     (fun results ->
       List.iter
         (fun (test, result) ->
-          Fmt.pf ppf "@[<hov>%s = %a@]@n"
+          Fmt.pf ppf "@[<hov>%s = %a@]@\n"
             (pad 30 @@ Test.Elt.name test)
             pp_ransac_result result )
         (zip tests results) )
