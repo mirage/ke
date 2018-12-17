@@ -49,7 +49,7 @@ let rec push : type a. a t -> a -> a t = fun q x -> match q with
   | Deep { s; f; m= (lazy q'); r= Three (y, z, z') } ->
     _deep (s + 1)  f (lazy (push q' (y, z))) (Two (z', x))
 
-let rec shift : type a. a t -> a * a t =
+let rec pop_exn : type a. a t -> a * a t =
   fun q ->
     match q with
     | Shallow Zero -> raise Empty
@@ -60,12 +60,26 @@ let rec shift : type a. a t -> a * a t =
       if is_empty q'
       then (x, Shallow r)
       else
-        let (y, z), q' = shift q' in
+        let (y, z), q' = pop_exn q' in
         (x, _deep (s - 1) (Two (y, z)) (Lazy.from_val q') r)
     | Deep { s; f= Two (x, y); m; r; } ->
       (x, _deep (s - 1) (One y) m r)
     | Deep { s; f= Three (x, y, z); m; r; } ->
       (x, _deep (s - 1) (Two (y, z)) m r)
+
+let peek_exn : type a. a t -> a =
+  fun q ->
+    match q with
+    | Shallow Zero -> raise Empty
+    | Shallow (One x) -> x
+    | Shallow (Two (x, _)) -> x
+    | Shallow (Three (x, _, _)) -> x
+    | Deep { f = One x; _ } -> x
+    | Deep { f = Two (x, _); _ } -> x
+    | Deep { f = Three (x, _, _); _ } -> x
+
+let pop q = try Some (pop_exn q) with Empty -> None
+let peek q = try Some (peek_exn q) with Empty -> None
 
 let rec cons : type a. a t -> a -> a t = fun q x -> match q with
   | Shallow Zero -> _one x
@@ -79,3 +93,29 @@ let rec cons : type a. a t -> a -> a t = fun q x -> match q with
     _deep (s + 1) (Three (x, y, z)) m r
   | Deep { s; f= Three (y, z, z'); m= (lazy q'); r; } ->
     _deep (s + 1) (Three (x, y, z)) (lazy (cons q' (z, z'))) r
+
+let iter : type a. (a -> unit) -> a t -> unit = fun f q ->
+  let rec go : type a. (a -> unit) -> a t -> unit = fun f -> function
+    | Shallow Zero -> ()
+    | Shallow (One x) -> f x
+    | Shallow (Two (x, y)) -> f x; f y
+    | Shallow (Three (x, y, z)) -> f x; f y; f z
+    | Deep { f= hd; m = lazy q; r= tl; _ } ->
+      go f (Shallow hd); go (fun (x, y) -> f x; f y) q; go f (Shallow tl) in
+  go f q
+
+let fold : type acc x. (acc -> x -> acc) -> acc -> x t -> acc = fun f a q ->
+  let rec go : type acc x. (acc -> x -> acc) -> acc -> x t -> acc = fun f a -> function
+    | Shallow Zero -> a
+    | Shallow (One x) -> f a x
+    | Shallow (Two (x, y)) -> f (f a x) y
+    | Shallow (Three (x, y, z)) -> f (f (f a x) y) z
+    | Deep { f= hd; m= lazy q; r= tl; _ } ->
+      let a = go f a (Shallow hd) in
+      let a = go (fun a (x, y) -> f (f a x) y) a q in
+      go f a (Shallow tl) in
+  go f a q
+
+let length q =
+  let f a _ = succ a in
+  fold f 0 q
