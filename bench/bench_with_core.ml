@@ -83,6 +83,64 @@ let push_and_pop_stdlib_queue n =
       String.iter (fun chr -> Queue.push chr queue) raw ;
       while not (Queue.is_empty queue) do ignore (Queue.pop queue) done)
 
+let big_push_fke n =
+  Staged.stage @@ fun () ->
+  let q = ref Ke.Fke.empty in
+  for i = 1 to n do q := Ke.Fke.push !q i done
+
+let big_push_rke n =
+  Staged.stage @@ fun () ->
+  let q = Ke.Rke.create ~capacity:n () in
+  for i = 1 to n do Ke.Rke.push q (Obj.magic i) done
+
+let big_push_mke n =
+  Staged.stage @@ fun () ->
+  let q = Ke.Mke.create ~capacity:n () in
+  for i = 1 to n do Ke.Mke.push q i done
+
+let big_push_queue n =
+  Staged.stage @@ fun () ->
+  let q = Queue.create () in
+  for i = 1 to n do Queue.enqueue q i done
+
+let big_push_stdlib_queue n =
+  let open Stdlib in
+  Staged.stage @@ fun () ->
+  let q = Queue.create () in
+  for i = 1 to n do Queue.push i q done
+
+let test_big_push_fke =
+  Test.create_indexed ~name:"Fke.big_push"
+    ~args:[10; 1_000_000]
+    big_push_fke
+
+let test_big_push_rke =
+  Test.create_indexed ~name:"Rke.big_push"
+    ~args:[10; 1_000_000]
+    big_push_rke
+
+let test_big_push_mke =
+  Test.create_indexed ~name:"Mke.big_push"
+    ~args:[10; 1_000_000]
+    big_push_mke
+
+let test_big_push_queue =
+  Test.create_indexed ~name:"Queue.big_push"
+    ~args:[10; 1_000_000]
+    big_push_queue
+
+let test_big_push_stdlib_queue =
+  Test.create_indexed ~name:"Stdlib.Queue.big_push"
+    ~args:[10; 1_000_000]
+    big_push_stdlib_queue
+
+let tests_big_push =
+  [ test_big_push_fke
+  ; test_big_push_rke
+  ; test_big_push_queue
+  ; test_big_push_mke
+  ; test_big_push_stdlib_queue ]
+
 let test_push_fke =
   Test.create_indexed ~name:"Fke.push"
     ~args:[100; 500; 1000; 5000; 10000;]
@@ -147,6 +205,6 @@ let tests_push_and_pop =
   ; test_push_and_pop_mke
   ; test_push_and_pop_stdlib_queue ]
 
-let command  = Bench.make_command (tests_push @ tests_push_and_pop)
+let command  = Bench.make_command (tests_push @ tests_big_push @ tests_push_and_pop)
 
 let () = Command.run command
