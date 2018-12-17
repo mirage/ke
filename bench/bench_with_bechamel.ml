@@ -92,7 +92,58 @@ let test_push_queue =
     ~args:[100; 500; 1000; 5000; 10000;]
     push_queue
 
-let tests_push = [ test_push_fke; test_push_rke; test_push_rke_n; test_push_queue; test_push_mke ]
+let tests_push =
+  [ test_push_fke
+  ; test_push_rke
+  ; test_push_rke_n
+  ; test_push_queue
+  ; test_push_mke ]
+
+let big_push_fke n =
+  Staged.stage @@ fun () ->
+  let q = ref Ke.Fke.empty in
+  for i = 1 to n do q := Ke.Fke.push !q i done
+
+let big_push_rke n =
+  Staged.stage @@ fun () ->
+  let q = Ke.Rke.create ~capacity:n () in
+  for i = 1 to n do Ke.Rke.push q (Obj.magic i) done
+
+let big_push_mke n =
+  Staged.stage @@ fun () ->
+  let q = Ke.Mke.create ~capacity:n () in
+  for i = 1 to n do Ke.Mke.push q i done
+
+let big_push_queue n =
+  Staged.stage @@ fun () ->
+  let q = Queue.create () in
+  for i = 1 to n do Queue.push i q done
+
+let test_big_push_fke =
+  Test.make_indexed ~name:"Fke.big_push"
+    ~args:[10; 1_000_000]
+    big_push_fke
+
+let test_big_push_rke =
+  Test.make_indexed ~name:"Rke.big_push"
+    ~args:[10; 1_000_000]
+    big_push_rke
+
+let test_big_push_mke =
+  Test.make_indexed ~name:"Mke.big_push"
+    ~args:[10; 1_000_000]
+    big_push_mke
+
+let test_big_push_queue =
+  Test.make_indexed ~name:"Queue.big_push"
+    ~args:[10; 1_000_000]
+    big_push_queue
+
+let tests_big_push =
+  [ test_big_push_fke
+  ; test_big_push_rke
+  ; test_big_push_queue
+  ; test_big_push_mke ]
 
 let test_push_and_pop_fke =
   Test.make_indexed ~name:"Fke.push & Fke.pop"
@@ -226,7 +277,8 @@ let () =
     | [|_|] -> []
     | [|_; "push"|] -> tests_push
     | [|_; "push&pop"|] -> tests_push_and_pop
-    | [|_; "all"|] -> tests_push @ tests_push_and_pop
+    | [|_; "big-push"|] -> tests_big_push
+    | [|_; "all"|] -> tests_push @ tests_big_push @ tests_push_and_pop
     | _ -> Fmt.invalid_arg "%s {push|all}" Sys.argv.(1)
   in
   let measure_and_analyze test =
