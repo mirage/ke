@@ -36,7 +36,7 @@ let push_and_pop_fke n =
       let q = List.fold_left Ke.Fke.push Ke.Fke.empty data in
       let rec go q =
         if not (Ke.Fke.is_empty q) then
-          let _, q = Ke.Fke.shift q in
+          let _, q = Ke.Fke.pop_exn q in
           go q
         else () in
       go q)
