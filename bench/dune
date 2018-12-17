@@ -1,3 +1,9 @@
 (executable
- (name bench)
+ (name bench_with_bechamel)
+ (modules bench_with_bechamel)
  (libraries fmt.tty logs.fmt mtime.clock.os ke bechamel))
+
+(executable
+ (name bench_with_core)
+ (modules bench_with_core)
+ (libraries core_bench ke core))
