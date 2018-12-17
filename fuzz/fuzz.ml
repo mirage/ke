@@ -42,7 +42,7 @@ module Value = struct
   let of_int n =
     let rec go k = function
       | 0 -> k (V Zero)
-      | n -> go (fun (V n) -> V (Succ n)) (pred n) in
+      | n -> go (fun (V n) -> k (V (Succ n))) (pred n) in
     if n < 0
     then Fmt.invalid_arg "Value.of_int"
     else go identity n
@@ -52,6 +52,10 @@ module Value = struct
     | Zero -> k 0
     | Succ x -> go (fun v -> k (succ v)) x in
     go identity v
+
+  let () = assert (to_int Zero = 0)
+  let () = assert (to_int (Succ Zero) = 1)
+  let () = assert (to_int (Succ (Succ Zero)) = 2)
 
   let pp : t Fmt.t = fun ppf (V v) -> Fmt.int ppf (to_int v)
 
