@@ -116,6 +116,9 @@ let fold : type acc x. (acc -> x -> acc) -> acc -> x t -> acc = fun f a q ->
       go f a (Shallow tl) in
   go f a q
 
-let length q =
-  let f a _ = succ a in
-  fold f 0 q
+let length = function
+  | Deep { s; _ } -> s
+  | Shallow Zero -> 0
+  | Shallow (One _) -> 1
+  | Shallow (Two _) -> 2
+  | Shallow (Three _) -> 3
