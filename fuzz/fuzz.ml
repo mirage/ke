@@ -110,18 +110,6 @@ open Crowbar
 
 let generate =
   let value = map [ range 30 ] Value.of_int in
-  fix @@ fun m ->
-  dynamic_bind (choose [ const `Push ; const `Pop ; const `Empty ]) @@ function
-  | `Empty -> const Stack.(V Empty)
-  | `Push -> map [ m; value ] (fun (Stack.V a) v -> Stack.(V (Push (v, a))))
-  | `Pop ->
-    map [ m ] @@ fun (Stack.V a) ->
-    match Stack.is_not_empty a with
-    | Some (Stack.Is_not_empty Refl.Refl) -> Stack.V (Stack.Pop a)
-    | None -> bad_test () (* XXX(dinosaure): I use, GADT only for this case. *)
-
-let generate =
-  let value = map [ range 30 ] Value.of_int in
   let go (Stack.V a) =
     map [ choose [ const `Push ; const `Pop ; const `Empty ]; value ] @@ fun c v -> match c with
     | `Empty -> Stack.(V a)
@@ -134,6 +122,18 @@ let generate =
     | 0 -> const acc
     | n -> dynamic_bind (go acc) (fun acc -> loop acc (pred n)) in
   loop (V Stack.Empty) 100
+
+let generate =
+  let value = map [ range 30 ] Value.of_int in
+  fix @@ fun m ->
+  dynamic_bind (choose [ const `Push ; const `Pop ; const `Empty ]) @@ function
+  | `Empty -> const Stack.(V Empty)
+  | `Push -> map [ m; value ] (fun (Stack.V a) v -> Stack.(V (Push (v, a))))
+  | `Pop ->
+    map [ m ] @@ fun (Stack.V a) ->
+    match Stack.is_not_empty a with
+    | Some (Stack.Is_not_empty Refl.Refl) -> Stack.V (Stack.Pop a)
+    | None -> bad_test () (* XXX(dinosaure): I use, GADT only for this case. *)
 
 (* XXX(dinosaure): [Stdlib.Queue] is oracle. *)
 
