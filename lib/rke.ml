@@ -65,7 +65,7 @@ let cons t v =
   Bigstringaf.unsafe_set t.v ((mask[@inlined]) t i) v ;
   t.r <- i
 
-let shift t =
+let pop t =
   let r = Bigstringaf.unsafe_get t.v ((mask[@inlined]) t t.r) in
   t.r <- t.r + 1; r
 
@@ -96,5 +96,5 @@ module N = struct
       blit t.v 0 v (off + pre) rst ;
     end else blit t.v msk v off len
 
-  let shift t len = t.r <- t.r + len
+  let pop t len = t.r <- t.r + len
 end

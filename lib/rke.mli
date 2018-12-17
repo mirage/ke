@@ -3,7 +3,7 @@ type t
 val is_empty : t -> bool
 val create : ?capacity:int -> unit -> t
 val push : t -> char -> unit
-val shift : t -> char
+val pop : t -> char
 val cons : t -> char -> unit
 
 module N : sig
@@ -16,5 +16,5 @@ module N : sig
   val keep :
     t -> blit:(Bigstringaf.t, 'a) blit -> length:'a length -> ?off:int -> ?len:int -> 'a -> unit
 
-  val shift : t -> int -> unit
+  val pop : t -> int -> unit
 end
