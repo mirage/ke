@@ -18,6 +18,11 @@ let push_rke n =
   let raw = random n in
   Staged.stage (fun () -> String.iter (Ke.Rke.push queue) raw)
 
+let push_mke n =
+  let queue = Ke.Mke.create ~capacity:n () in
+  let raw = random n in
+  Staged.stage (fun () -> String.iter (Ke.Mke.push queue) raw)
+
 let push_rke_n n =
   let queue = Ke.Rke.create ~capacity:n () in
   let raw = random n in
@@ -41,12 +46,19 @@ let push_and_pop_fke n =
         else () in
       go q)
 
+let push_and_pop_mke n =
+  let queue = Ke.Mke.create ~capacity:n () in
+  let raw = random n in
+  Staged.stage (fun () ->
+      String.iter (Ke.Mke.push queue) raw ;
+      while not (Ke.Mke.is_empty queue) do ignore (Ke.Mke.pop queue) done)
+
 let push_and_pop_rke n =
   let queue = Ke.Rke.create ~capacity:n () in
   let raw = random n in
   Staged.stage (fun () ->
       String.iter (Ke.Rke.push queue) raw ;
-      while not (Ke.Rke.is_empty queue) do ignore (Ke.Rke.shift queue) done)
+      while not (Ke.Rke.is_empty queue) do ignore (Ke.Rke.pop queue) done)
 
 let push_and_pop_queue n =
   let queue = Queue.create () in
@@ -59,6 +71,11 @@ let test_push_fke =
   Test.make_indexed ~name:"Fke.push"
     ~args:[100; 500; 1000; 5000; 10000;]
     push_fke
+
+let test_push_mke =
+  Test.make_indexed ~name:"Mke.push"
+    ~args:[100; 500; 1000; 5000; 10000;]
+    push_mke
 
 let test_push_rke =
   Test.make_indexed ~name:"Rke.push"
@@ -75,15 +92,20 @@ let test_push_queue =
     ~args:[100; 500; 1000; 5000; 10000;]
     push_queue
 
-let tests_push = [ test_push_fke; test_push_rke; test_push_rke_n; test_push_queue ]
+let tests_push = [ test_push_fke; test_push_rke; test_push_rke_n; test_push_queue; test_push_mke ]
 
 let test_push_and_pop_fke =
-  Test.make_indexed ~name:"Fke.push & Fke.shift"
+  Test.make_indexed ~name:"Fke.push & Fke.pop"
     ~args:[100; 500; 1000; 5000; 10000;]
     push_and_pop_fke
 
+let test_push_and_pop_mke =
+  Test.make_indexed ~name:"Mke.push & Push.pop"
+    ~args:[100; 500; 1000; 5000; 10000;]
+    push_and_pop_mke
+
 let test_push_and_pop_rke =
-  Test.make_indexed ~name:"Rke.push & Rke.shift"
+  Test.make_indexed ~name:"Rke.push & Rke.pop"
     ~args:[100; 500; 1000; 5000; 10000;]
     push_and_pop_rke
 
@@ -95,7 +117,8 @@ let test_push_and_pop_queue =
 let tests_push_and_pop =
   [ test_push_and_pop_fke
   ; test_push_and_pop_rke
-  ; test_push_and_pop_queue ]
+  ; test_push_and_pop_queue
+  ; test_push_and_pop_mke ]
 
 let zip l1 l2 =
   let rec go acc = function
