@@ -5,6 +5,8 @@ type ('a, 'b) t =
   ; k: ('a, 'b) Bigarray.kind
   ; mutable v: ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t }
 
+exception Empty
+
 external ( = ) : 'a -> 'a -> bool = "%equal"
 let ( = ) (a : int) b = a = b
 
@@ -66,9 +68,18 @@ let cons t v =
   Bigarray.Array1.unsafe_set t.v ((mask[@inlined]) t i) v ;
   t.r <- i
 
-let pop t =
+let pop_exn t =
+  if (empty[@inlined]) t then raise Empty ;
   let r = Bigarray.Array1.unsafe_get t.v ((mask[@inlined]) t t.r) in
   t.r <- t.r + 1; r
+
+let pop t = try Some (pop_exn t) with Empty -> None
+
+let peek_exn t =
+  if (empty[@inlined]) t then raise Empty ;
+  Bigarray.Array1.unsafe_get t.v ((mask[@inlined]) t t.r)
+
+let peek t = try Some (peek_exn t) with Empty -> None
 
 module N = struct
   type ('a, 'b) bigarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
@@ -100,3 +111,16 @@ module N = struct
 
   let pop t len = t.r <- t.r + len
 end
+
+let iter f t =
+  let idx = ref t.r in
+  let max = t.w in
+
+  while !idx <> max do
+    f (Bigarray.Array1.unsafe_get t.v ((mask[@inlined]) t !idx)) ;
+    incr idx
+  done
+
+let fold f a t =
+  let a = ref a in
+  iter (fun x -> a := f !a x) t ; !a

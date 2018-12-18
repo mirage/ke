@@ -106,23 +106,6 @@ end
 
 open Crowbar
 
-[@@@warning "-32"]
-
-let generate =
-  let value = map [ range 30 ] Value.of_int in
-  let go (Stack.V a) =
-    map [ choose [ const `Push ; const `Pop ; const `Empty ]; value ] @@ fun c v -> match c with
-    | `Empty -> Stack.(V a)
-    | `Push -> let open Stack in V (Push (v, a))
-    | `Pop ->
-      match Stack.is_not_empty a with
-      | Some (Stack.Is_not_empty Refl.Refl) -> Stack.(V (Pop a))
-      | None -> bad_test () in
-  let rec loop acc = function
-    | 0 -> const acc
-    | n -> dynamic_bind (go acc) (fun acc -> loop acc (pred n)) in
-  loop (V Stack.Empty) 100
-
 type tree = Tree of Value.t * tree list
 
 let rec list_of_tree (Tree (v, x)) : [ `Push of Value.t | `Pop ] list =
@@ -156,6 +139,11 @@ module Compare = struct
     let q' = Queue.copy q in
     try Ke.Fke.iter (fun x -> let x' = Queue.pop q' in if x <> x' then raise Not_equal) fke ; true
     with Not_equal | Queue.Empty -> false
+
+  let rke q rke =
+    let q' = Queue.copy q in
+    try Ke.Rke.iter (fun x -> let x' = Queue.pop q' in if x <> x' then raise Not_equal) rke ; true
+    with Not_equal | Queue.Empty -> false
 end
 
 let iter iter pp_name pp_elt ppf v =
@@ -170,6 +158,15 @@ let iter iter pp_name pp_elt ppf v =
 
 let pp_fke pp_elt = iter Ke.Fke.iter (Fmt.always "fke") pp_elt
 let pp_mke pp_elt = iter Ke.Mke.iter (Fmt.always "mke") pp_elt
+let pp_rke pp_elt = iter Ke.Rke.iter (Fmt.always "mke") pp_elt
+
+let rke_of_action a =
+  let q = Ke.Rke.create ~capacity:(Value.to_int (Stack.length a)) Bigarray.Int in
+  let rec go : type l. (Value.t, l) Stack.action -> unit = function
+    | Stack.Empty -> ()
+    | Stack.Push (Value.V v, a) -> go a ; Ke.Rke.push q (Value.to_int v)
+    | Stack.Pop a -> go a ; ignore @@ Ke.Rke.pop_exn q in
+  go a ; q
 
 let mke_of_action a =
   let q = Ke.Mke.create ~capacity:(Value.to_int (Stack.length a)) () in
@@ -198,9 +195,16 @@ let () =
   add_test ~name:"queue" [ map [ generate ] action_of_tree ] @@ fun (Stack.V a) ->
   let fke = fke_of_action a in
   let mke = mke_of_action a in
+  let rke = rke_of_action a in
   let queue = queue_of_action a in
+
+  Fmt.epr "test: %a.\n%!" (Stack.pp Value.pp) a ;
 
   if not (Compare.mke queue mke)
   then failf "%a <> %a" Fmt.(Dump.queue int) queue (pp_mke Fmt.int) mke ;
   if not (Compare.fke queue fke)
-  then failf "%a <> %a" Fmt.(Dump.queue int) queue (pp_fke Fmt.int) fke
+  then failf "%a <> %a" Fmt.(Dump.queue int) queue (pp_fke Fmt.int) fke ;
+  if not (Compare.rke queue rke)
+  then failf "%a <> %a" Fmt.(Dump.queue int) queue (pp_rke Fmt.int) rke ;
+
+  ()
