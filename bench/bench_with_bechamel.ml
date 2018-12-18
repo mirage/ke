@@ -1,5 +1,33 @@
-open Bechamel
 open Toolkit
+open Bechamel
+
+module Realtime_clock = struct
+  type label = string
+  type witness = unit
+  type value = int64 ref
+
+  let load () = ()
+  let unload () = ()
+  let make () = ()
+  let label () = "realtime-clock"
+  let epsilon () = {contents= 0L}
+  let blit () v =
+    v := Oclock.gettime Oclock.realtime
+  let diff a b = {contents= Int64.sub !b !a}
+  let float x = Int64.to_float !x
+end
+
+module Extension = struct
+  include Extension
+
+  let realtime_clock = Measure.make (module Realtime_clock)
+end
+
+module Instance = struct
+  include Instance
+
+  let realtime_clock = Measure.instance (module Realtime_clock) Extension.realtime_clock
+end
 
 let random ln =
   let ic = open_in "/dev/urandom" in
@@ -271,7 +299,7 @@ let unzip =
 let () =
   let ols = Analyze.ols ~r_square:true ~bootstrap:0 ~predictors:Measure.[|run|] in
   let ransac = Analyze.ransac ~filter_outliers:true ~predictor:Measure.run in
-  let instances = Instance.[minor_allocated; major_allocated; monotonic_clock] in
+  let instances = Instance.[minor_allocated; major_allocated; cpu_clock; realtime_clock] in
   let tests =
     match Sys.argv with
     | [|_|] -> []
