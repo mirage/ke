@@ -123,17 +123,24 @@ let generate =
     | n -> dynamic_bind (go acc) (fun acc -> loop acc (pred n)) in
   loop (V Stack.Empty) 100
 
-let generate =
+type tree = Tree of Value.t * tree list
+
+let rec list_of_tree (Tree (v, x)) : [ `Push of Value.t | `Pop ] list =
+  [ `Push v ] @ List.concat (List.map list_of_tree x) @ [ `Pop ]
+
+let generate : tree gen =
   let value = map [ range 30 ] Value.of_int in
-  fix @@ fun m ->
-  dynamic_bind (choose [ const `Push ; const `Pop ; const `Empty ]) @@ function
-  | `Empty -> const Stack.(V Empty)
-  | `Push -> map [ m; value ] (fun (Stack.V a) v -> Stack.(V (Push (v, a))))
-  | `Pop ->
-    map [ m ] @@ fun (Stack.V a) ->
-    match Stack.is_not_empty a with
-    | Some (Stack.Is_not_empty Refl.Refl) -> Stack.V (Stack.Pop a)
-    | None -> bad_test () (* XXX(dinosaure): I use, GADT only for this case. *)
+  fix @@ fun m -> map [ value; list m ] (fun v l -> Tree (v, l))
+
+let action_of_tree tree : Value.t Stack.t =
+  let lst = list_of_tree tree in
+  List.fold_left
+    (fun (Stack.V acc) -> function
+       | `Push v -> Stack.(V (Push (v, acc)))
+       | `Pop -> match Stack.is_not_empty acc with
+         | Some (Stack.Is_not_empty Refl.Refl) -> Stack.V (Stack.Pop acc)
+         | None -> bad_test ())
+    Stack.(V Empty) lst
 
 (* XXX(dinosaure): [Stdlib.Queue] is oracle. *)
 
@@ -188,7 +195,7 @@ let fke_of_action a =
   go identity a
 
 let () =
-  add_test ~name:"queue" [ generate ] @@ fun (Stack.V a) ->
+  add_test ~name:"queue" [ map [ generate ] action_of_tree ] @@ fun (Stack.V a) ->
   let fke = fke_of_action a in
   let mke = mke_of_action a in
   let queue = queue_of_action a in
