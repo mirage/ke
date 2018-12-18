@@ -198,8 +198,6 @@ let () =
   let rke = rke_of_action a in
   let queue = queue_of_action a in
 
-  Fmt.epr "test: %a.\n%!" (Stack.pp Value.pp) a ;
-
   if not (Compare.mke queue mke)
   then failf "%a <> %a" Fmt.(Dump.queue int) queue (pp_mke Fmt.int) mke ;
   if not (Compare.fke queue fke)
