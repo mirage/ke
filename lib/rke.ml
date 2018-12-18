@@ -1,8 +1,9 @@
-type t =
+type ('a, 'b) t =
   { mutable r: int
   ; mutable w: int
   ; mutable c: int
-  ; mutable v: Bigstringaf.t }
+  ; k: ('a, 'b) Bigarray.kind
+  ; mutable v: ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t }
 
 external ( = ) : 'a -> 'a -> bool = "%equal"
 let ( = ) (a : int) b = a = b
@@ -24,29 +25,29 @@ let[@inline always] to_power_of_two v =
 
 let is_empty t = (empty[@inlined]) t
 
-let create ?capacity () =
+let create ?capacity kind =
   let capacity = match capacity with
     | None | Some 0 -> 1
     | Some n ->
       if n < 0 then Fmt.invalid_arg "Rke.create"
       else to_power_of_two n in
-  { r= 0; w= 0; c= capacity; v= Bigstringaf.create capacity }
+  { r= 0; w= 0; c= capacity; k= kind; v= Bigarray.Array1.create kind Bigarray.c_layout capacity }
 
 let grow t want =
   let max : int -> int -> int = max in
   let c = to_power_of_two (max 1 (max want (size t))) in
-  if c <> Bigstringaf.length t.v
+  if c <> Bigarray.Array1.dim t.v
   then begin
-    let dst = Bigstringaf.create c in
+    let dst = Bigarray.Array1.create t.k Bigarray.c_layout c in
     let sze = (size[@inlined]) t in
     let msk = (mask[@inlined]) t t.r in
     let pre = t.c - msk in
     let rst = sze - pre in
 
     if rst > 0 then begin
-      Bigstringaf.unsafe_blit t.v ~src_off:msk dst ~dst_off:0 ~len:pre ;
-      Bigstringaf.unsafe_blit t.v ~src_off:0 dst ~dst_off:pre ~len:rst ;
-    end else Bigstringaf.unsafe_blit t.v ~src_off:msk dst ~dst_off:0 ~len:sze ;
+      Bigarray.Array1.(blit (sub t.v msk pre) (sub dst 0 pre)) ;
+      Bigarray.Array1.(blit (sub t.v 0 rst) (sub dst pre rst)) ;
+    end else Bigarray.Array1.(blit (sub t.v msk sze) (sub dst 0 sze)) ;
 
     t.v <- dst ;
     t.w <- sze ;
@@ -56,20 +57,21 @@ let grow t want =
 
 let push t v =
   if (full[@inlined]) t then grow t (2 * (size[@inlined]) t);
-  Bigstringaf.unsafe_set t.v ((mask[@inlined]) t t.w) v ;
+  Bigarray.Array1.unsafe_set t.v ((mask[@inlined]) t t.w) v ;
   t.w <- t.w + 1
 
 let cons t v =
   if (full[@inlined]) t then grow t (2 * (size[@inlined]) t);
   let i = t.r - 1 in
-  Bigstringaf.unsafe_set t.v ((mask[@inlined]) t i) v ;
+  Bigarray.Array1.unsafe_set t.v ((mask[@inlined]) t i) v ;
   t.r <- i
 
 let pop t =
-  let r = Bigstringaf.unsafe_get t.v ((mask[@inlined]) t t.r) in
+  let r = Bigarray.Array1.unsafe_get t.v ((mask[@inlined]) t t.r) in
   t.r <- t.r + 1; r
 
 module N = struct
+  type ('a, 'b) bigarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
   type ('a, 'b) blit = 'a -> int -> 'b -> int -> int -> unit
   type 'a length = 'a -> int
 

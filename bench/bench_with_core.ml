@@ -16,7 +16,7 @@ let push_fke n =
   Staged.stage (fun () -> List.fold_left ~f:Ke.Fke.push ~init:Ke.Fke.empty data)
 
 let push_rke n =
-  let queue = Ke.Rke.create ~capacity:n () in
+  let queue = Ke.Rke.create ~capacity:n Bigarray.Char in
   let raw = random n in
   Staged.stage (fun () -> String.iter ~f:(Ke.Rke.push queue) raw)
 
@@ -26,7 +26,7 @@ let push_mke n =
   Staged.stage (fun () -> String.iter ~f:(Ke.Mke.push queue) raw)
 
 let push_rke_n n =
-  let queue = Ke.Rke.create ~capacity:n () in
+  let queue = Ke.Rke.create ~capacity:n Bigarray.Char in
   let raw = random n in
   let blit src src_off dst dst_off len = Bigstringaf.unsafe_blit_from_string src ~src_off dst ~dst_off ~len in
   Staged.stage (fun () -> Ke.Rke.N.push queue ~blit ~length:String.length raw)
@@ -62,7 +62,7 @@ let push_and_pop_mke n =
       while not (Ke.Mke.is_empty queue) do ignore (Ke.Mke.pop queue) done)
 
 let push_and_pop_rke n =
-  let queue = Ke.Rke.create ~capacity:n () in
+  let queue = Ke.Rke.create ~capacity:n Bigarray.Char in
   let raw = random n in
   Staged.stage (fun () ->
       String.iter ~f:(Ke.Rke.push queue) raw ;
@@ -90,7 +90,7 @@ let big_push_fke n =
 
 let big_push_rke n =
   Staged.stage @@ fun () ->
-  let q = Ke.Rke.create ~capacity:n () in
+  let q = Ke.Rke.create ~capacity:n Bigarray.Char in
   for i = 1 to n do Ke.Rke.push q (Obj.magic i) done
 
 let big_push_mke n =
