@@ -241,29 +241,19 @@ let pp_ransac_result ppf result =
 let pad n x =
   if String.length x > n then x else x ^ String.make (n - String.length x) ' '
 
-let pp_ols_results ppf (test, results) =
-  let tests = Test.set test in
-  List.iter
-    (fun results ->
-      List.iter
-        (fun (test, result) ->
-          Fmt.pf ppf "@[<hov>%s = %a@]@\n"
-            (pad 30 @@ Test.Elt.name test)
-            pp_ols_result result )
-        (zip tests results) )
-    results
+let pp_ols_results : (string, Analyze.OLS.t) Hashtbl.t Fmt.t = fun ppf ->
+  Hashtbl.iter
+    (fun test_name result ->
+       Fmt.pf ppf "@[<hov>%s = %a@]@\n"
+         (pad 30 @@ test_name)
+         pp_ols_result result )
 
-let pp_ransac_results ppf (test, results) =
-  let tests = Test.set test in
-  List.iter
-    (fun results ->
-      List.iter
-        (fun (test, result) ->
-          Fmt.pf ppf "@[<hov>%s = %a@]@\n"
-            (pad 30 @@ Test.Elt.name test)
-            pp_ransac_result result )
-        (zip tests results) )
-    results
+let pp_ransac_results : (string, Analyze.RANSAC.t) Hashtbl.t Fmt.t = fun ppf ->
+  Hashtbl.iter
+    (fun test_name result ->
+       Fmt.pf ppf "@[<hov>%s = %a@]@\n"
+         (pad 30 @@ test_name)
+         pp_ransac_result result )
 
 let reporter ppf =
   let report src level ~over k msgf =
@@ -314,22 +304,22 @@ let () =
       Benchmark.all ~stabilize:true ~quota:(Benchmark.s 2.) ~run:5000 instances test
     in
     List.map
-      (fun x -> List.map (Analyze.analyze ols (Measure.label x)) results)
+      (fun x -> Analyze.all ols x results)
       instances,
     List.map
-      (fun x -> List.map (Analyze.analyze ransac (Measure.label x)) results)
+      (fun x -> Analyze.all ransac x results)
       instances
   in
   let ols_results, ransac_results = unzip (List.map measure_and_analyze tests) in
   List.iter
-    (fun (test, result) ->
-      Fmt.pr "[OLS] ---------- %s ----------\n%!" (Test.name test) ;
-      Fmt.pr "%a\n%!" pp_ols_results (test, result) )
-    (zip tests ols_results) ;
+    (fun (instance, results) ->
+      Fmt.pr "[OLS] ---------- %a ----------\n%!" Label.pp (Measure.label instance) ;
+      Fmt.pr "%a\n%!" Fmt.(list ~sep:(always "@\n") pp_ols_results) results)
+    (zip instances ols_results) ;
   List.iter
-    (fun (test, result) ->
-       Fmt.pr "[RANSAC] ---------- %s ----------\n%!" (Test.name test) ;
-       Fmt.pr "%a\n%!" pp_ransac_results (test, result) )
-    (zip tests ransac_results)
+    (fun (instance, results) ->
+       Fmt.pr "[RANSAC] ---------- %a ----------\n%!" Label.pp (Measure.label instance) ;
+       Fmt.pr "%a\n%!" Fmt.(list ~sep:(always "@\n") pp_ransac_results) results)
+    (zip instances ransac_results)
 
 
