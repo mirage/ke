@@ -158,7 +158,7 @@ let iter iter pp_name pp_elt ppf v =
 
 let pp_fke pp_elt = iter Ke.Fke.iter (Fmt.always "fke") pp_elt
 let pp_mke pp_elt = iter Ke.Mke.iter (Fmt.always "mke") pp_elt
-let pp_rke pp_elt = iter Ke.Rke.iter (Fmt.always "mke") pp_elt
+let pp_rke pp_elt = iter Ke.Rke.iter (Fmt.always "rke") pp_elt
 
 let rke_of_action a =
   let q = Ke.Rke.create ~capacity:(Value.to_int (Stack.length a)) Bigarray.Int in
