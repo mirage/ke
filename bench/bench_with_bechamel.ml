@@ -315,7 +315,7 @@ let () =
     (fun results ->
   List.iter
     (fun (instance, result) ->
-      Fmt.pr "%a: @[<hov>]%a@]\n%!"
+      Fmt.pr "%a: @[<v>%a@]\n%!"
         Label.pp (Measure.label instance)
         pp_ols_results result)
       (zip instances results))
