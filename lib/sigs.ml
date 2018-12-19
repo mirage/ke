@@ -427,5 +427,9 @@ module Weighted = struct
     val fold : ('acc -> 'x -> 'acc) -> 'acc -> ('x, 'b) t -> 'acc
     (** [fold f a q] is equivalent to [List.fold_left f a l], where [l] is the
        list of [q]'s elements. The queue remains unchanged. *)
+
+    (** / **)
+
+    val unsafe_bigarray : ('a, 'b) t -> ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
   end
 end

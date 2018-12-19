@@ -261,4 +261,6 @@ module Weighted = struct
     let a = ref a in
     iter (fun x -> a := f !a x) t ;
     !a
+
+  let unsafe_bigarray { v; _ } = v
 end
