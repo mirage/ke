@@ -102,7 +102,7 @@ module N = struct
 
   let keep_exn t ~blit ~length ?(off = 0) ?len v =
     let len = match len with None -> length v - off | Some len -> len in
-    if (size[@inlined]) t < len then raise Empty ;
+    if (size [@inlined]) t < len then raise Empty ;
     let msk = (mask [@inlined]) t t.w in
     let pre = t.c - msk in
     let rst = len - pre in
@@ -112,17 +112,15 @@ module N = struct
     else blit t.v msk v off len
 
   let keep t ~blit ~length ?off ?len v =
-    try Some (keep_exn t ~blit ~length ?off ?len v)
-    with Empty -> None
+    try Some (keep_exn t ~blit ~length ?off ?len v) with Empty -> None
 
   let unsafe_shift t len = t.r <- t.r + len
 
   let shift_exn t len =
-    if (size[@inlined]) t < len then raise Empty ;
+    if (size [@inlined]) t < len then raise Empty ;
     unsafe_shift t len
 
-  let shift t len =
-    try Some (shift_exn t len) with Empty -> None
+  let shift t len = try Some (shift_exn t len) with Empty -> None
 end
 
 let iter f t =
@@ -216,16 +214,20 @@ module Weighted = struct
           blit v off t.v msk pre ;
           blit v (off + pre) t.v 0 rst ;
           [ Bigarray.Array1.sub t.v ((mask [@inlined]) t t.w) len
-          ; Bigarray.Array1.sub t.v 0 rst ])
-        else (blit v off t.v msk len ; [ Bigarray.Array1.sub t.v ((mask [@inlined]) t t.w) len ] )
-      in t.w <- t.w + len ; ret
+          ; Bigarray.Array1.sub t.v 0 rst ] )
+        else (
+          blit v off t.v msk len ;
+          [Bigarray.Array1.sub t.v ((mask [@inlined]) t t.w) len] )
+      in
+      t.w <- t.w + len ;
+      ret
 
     let push t ~blit ~length ?off ?len v =
       try Some (push_exn t ~blit ~length ?off ?len v) with Full -> None
 
     let keep_exn t ~blit ~length ?(off = 0) ?len v =
       let len = match len with None -> length v - off | Some len -> len in
-      if (size[@inlined]) t < len then raise Empty ;
+      if (size [@inlined]) t < len then raise Empty ;
       let msk = (mask [@inlined]) t t.w in
       let pre = t.c - msk in
       let rst = len - pre in
@@ -235,17 +237,15 @@ module Weighted = struct
       else blit t.v msk v off len
 
     let keep t ~blit ~length ?off ?len v =
-      try Some (keep_exn t ~blit ~length ?off ?len v)
-      with Empty -> None
+      try Some (keep_exn t ~blit ~length ?off ?len v) with Empty -> None
 
     let unsafe_shift t len = t.r <- t.r + len
 
     let shift_exn t len =
-      if (size[@inlined]) t < len then raise Empty ;
+      if (size [@inlined]) t < len then raise Empty ;
       unsafe_shift t len
 
-    let shift t len =
-      try Some (shift_exn t len) with Empty -> None
+    let shift t len = try Some (shift_exn t len) with Empty -> None
   end
 
   let iter f t =

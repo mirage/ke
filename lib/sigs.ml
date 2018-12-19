@@ -134,7 +134,7 @@ module type R = sig
     type 'a length = 'a -> int
 
     val push :
-      ('a, 'b) t
+         ('a, 'b) t
       -> blit:('src, ('a, 'b) bigarray) blit
       -> length:'src length
       -> ?off:int
@@ -146,7 +146,7 @@ module type R = sig
        value of [off] is [0]. Default value of [len] is [length src - off]. *)
 
     val keep_exn :
-      ('a, 'b) t
+         ('a, 'b) t
       -> blit:(('a, 'b) bigarray, 'dst) blit
       -> length:'dst length
       -> ?off:int
@@ -161,7 +161,7 @@ module type R = sig
        unchanged. *)
 
     val keep :
-      ('a, 'b) t
+         ('a, 'b) t
       -> blit:(('a, 'b) bigarray, 'dst) blit
       -> length:'dst length
       -> ?off:int
@@ -262,13 +262,13 @@ module Weighted = struct
         -> ('a, 'b) bigarray list
       (** [push_exn q ~blit ~length ?off ?len src] {i blits} elements in [src]
          to the given queue [q] at the end (like a fast iterative {!R.push}).
-         Default value of [off] is [0]. Default value of [len] is [length src -
-         off]. It returns a list of internal {!bigarray}s which contain [dst].
+         Default value of [off] is [0]. Default value of [len] is [length src - off].
+         It returns a list of internal {!bigarray}s which contain [dst].
          If the given [q] does not have enough free space to write [src], it
          raises {!Full} and the given queue is unchanged. *)
 
       val push :
-        ('a, 'b) t
+           ('a, 'b) t
         -> blit:('src, ('a, 'b) bigarray) blit
         -> length:'src length
         -> ?off:int
@@ -315,8 +315,6 @@ module Weighted = struct
       val shift : ('a, 'b) t -> int -> unit option
       (** Same as {!shift_exn} but if it fails, it returns [None]. *)
     end
-
-
 
     val iter : ('a -> unit) -> ('a, 'b) t -> unit
     (** [iter f q] applies [f] in turn to all elements of [q], from the least
@@ -402,7 +400,7 @@ module Weighted = struct
          raises {!Full} and the given queue is unchanged. *)
 
       val push :
-        ('a, 'b) t
+           ('a, 'b) t
         -> blit:('src, ('a, 'b) bigarray) blit
         -> length:'src length
         -> ?off:int
