@@ -310,7 +310,7 @@ let () =
       (fun x -> Analyze.all ransac x results)
       instances
   in
-  let ols_results, ransac_results = unzip (List.map measure_and_analyze tests) in
+  let ols_results, ransac_results = measure_and_analyze tests in
   List.iter
     (fun (instance, results) ->
       Fmt.pr "[OLS] ---------- %a ----------\n%!" Label.pp (Measure.label instance) ;
