@@ -330,12 +330,12 @@ let () =
   Hashtbl.iter
     (fun label results ->
       Fmt.pr "%a: @[<v>%a@]\n%!" Label.pp label
-        Fmt.(Dump.hashtbl string pp_ols_results)
+        Fmt.(hashtbl (using snd pp_ols_results))
         results )
     ols_results ;
   Hashtbl.iter
     (fun label results ->
       Fmt.pr "%a: @[<v>%a@]\n%!" Label.pp label
-        Fmt.(Dump.hashtbl string pp_ransac_results)
+        Fmt.(hashtbl (using snd pp_ransac_results))
         results )
     ransac_results
