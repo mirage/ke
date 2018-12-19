@@ -179,7 +179,7 @@ let test_push_and_pop_fke =
     push_and_pop_fke
 
 let test_push_and_pop_mke =
-  Test.create_indexed ~name:"Mke.push & Push.pop"
+  Test.create_indexed ~name:"Mke.push & Mke.pop"
     ~args:[100; 500; 1000; 5000; 10000;]
     push_and_pop_mke
 
