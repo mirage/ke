@@ -44,11 +44,6 @@ let push_rke n =
   let raw = random n in
   Staged.stage (fun () -> String.iter (Ke.Rke.push queue) raw)
 
-let push_mke n =
-  let queue = Ke.Mke.create ~capacity:n () in
-  let raw = random n in
-  Staged.stage (fun () -> String.iter (Ke.Mke.push queue) raw)
-
 let push_rke_n n =
   let queue = Ke.Rke.create ~capacity:n Bigarray.Char in
   let raw = random n in
@@ -75,15 +70,6 @@ let push_and_pop_fke n =
       in
       go q )
 
-let push_and_pop_mke n =
-  let queue = Ke.Mke.create ~capacity:n () in
-  let raw = random n in
-  Staged.stage (fun () ->
-      String.iter (Ke.Mke.push queue) raw ;
-      while not (Ke.Mke.is_empty queue) do
-        ignore (Ke.Mke.pop queue)
-      done )
-
 let push_and_pop_rke n =
   let queue = Ke.Rke.create ~capacity:n Bigarray.Char in
   let raw = random n in
@@ -107,11 +93,6 @@ let test_push_fke =
     ~args:[100; 500; 1000; 5000; 10000]
     push_fke
 
-let test_push_mke =
-  Test.make_indexed ~name:"Mke.push"
-    ~args:[100; 500; 1000; 5000; 10000]
-    push_mke
-
 let test_push_rke =
   Test.make_indexed ~name:"Rke.push"
     ~args:[100; 500; 1000; 5000; 10000]
@@ -128,8 +109,7 @@ let test_push_queue =
     push_queue
 
 let tests_push =
-  [ test_push_fke; test_push_rke; test_push_rke_n; test_push_queue
-  ; test_push_mke ]
+  [test_push_fke; test_push_rke; test_push_rke_n; test_push_queue]
 
 let big_push_fke n =
   Staged.stage
@@ -147,14 +127,6 @@ let big_push_rke n =
     Ke.Rke.push q (Obj.magic i)
   done
 
-let big_push_mke n =
-  Staged.stage
-  @@ fun () ->
-  let q = Ke.Mke.create ~capacity:n () in
-  for i = 1 to n do
-    Ke.Mke.push q i
-  done
-
 let big_push_queue n =
   Staged.stage
   @@ fun () ->
@@ -169,24 +141,15 @@ let test_big_push_fke =
 let test_big_push_rke =
   Test.make_indexed ~name:"Rke.big_push" ~args:[10; 1_000_000] big_push_rke
 
-let test_big_push_mke =
-  Test.make_indexed ~name:"Mke.big_push" ~args:[10; 1_000_000] big_push_mke
-
 let test_big_push_queue =
   Test.make_indexed ~name:"Queue.big_push" ~args:[10; 1_000_000] big_push_queue
 
-let tests_big_push =
-  [test_big_push_fke; test_big_push_rke; test_big_push_queue; test_big_push_mke]
+let tests_big_push = [test_big_push_fke; test_big_push_rke; test_big_push_queue]
 
 let test_push_and_pop_fke =
   Test.make_indexed ~name:"Fke.push & Fke.pop"
     ~args:[100; 500; 1000; 5000; 10000]
     push_and_pop_fke
-
-let test_push_and_pop_mke =
-  Test.make_indexed ~name:"Mke.push & Push.pop"
-    ~args:[100; 500; 1000; 5000; 10000]
-    push_and_pop_mke
 
 let test_push_and_pop_rke =
   Test.make_indexed ~name:"Rke.push & Rke.pop"
@@ -199,8 +162,7 @@ let test_push_and_pop_queue =
     push_and_pop_queue
 
 let tests_push_and_pop =
-  [ test_push_and_pop_fke; test_push_and_pop_rke; test_push_and_pop_queue
-  ; test_push_and_pop_mke ]
+  [test_push_and_pop_fke; test_push_and_pop_rke; test_push_and_pop_queue]
 
 let zip l1 l2 =
   let rec go acc = function
@@ -226,8 +188,7 @@ let pp_ols_result ppf result =
         estimates
         Fmt.(option float)
         (Analyze.OLS.r_square result)
-  | None ->
-      Fmt.pf ppf "#unable-to-compute"
+  | None -> Fmt.pf ppf "#unable-to-compute"
 
 let pp_ransac_result ppf result =
   Fmt.pf ppf "%04.04f [error: %04.04f]"
