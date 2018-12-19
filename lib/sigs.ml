@@ -43,50 +43,6 @@ module type F = sig
      list of [q]'s elements. The queue remains unchanged. *)
 end
 
-module type M = sig
-  (** The type of queues containing elements of type ['a]. *)
-  type 'a t
-
-  (** Raised when {!peek_exn} or {!pop_exn} is applied to an empty queue. *)
-  exception Empty
-
-  val create : ?capacity:int -> unit -> 'a t
-  (** Return a new queue, initially empty. *)
-
-  val is_empty : 'a t -> bool
-  (** Return [true] if the given queue is empty, [false] otherwise. *)
-
-  val length : 'a t -> int
-
-  val push : 'a t -> 'a -> unit
-  (** [push q x] adds the element [x] at the end of the queue [q]. *)
-
-  val cons : 'a t -> 'a -> unit
-
-  val peek : 'a t -> 'a option
-  (** [peek q] returns the first element in the queue [q], without removing it
-     from the queue. If [q] is empty, it returns [None]. *)
-
-  val peek_exn : 'a t -> 'a
-  (** Same as {!peek} but it raises {!Empty} if [q] is empty. *)
-
-  val pop : 'a t -> 'a option
-  (** [pop q] removes and returns the first element in queue [q]. If [q] is
-     empty, it returns [None]. *)
-
-  val pop_exn : 'a t -> 'a
-  (** Same as {!pop} but it raises {!Empty} if [q] is empty. *)
-
-  val iter : ('a -> unit) -> 'a t -> unit
-  (** [iter f q] applies [f] in turn to all elements of [q], from the least
-     recently entered to the most recently entered. The queue itself is
-     unchanged. *)
-
-  val fold : ('acc -> 'x -> 'acc) -> 'acc -> 'x t -> 'acc
-  (** [fold f a q] is equivalent to [List.fold_left f a l], where [l] is the
-     list of [q]'s elements. The queue remains unchanged. *)
-end
-
 module type R = sig
   (** The type of queues containing elements of type ['a]. *)
   type ('a, 'b) t
@@ -100,6 +56,9 @@ module type R = sig
 
   val create : ?capacity:int -> ('a, 'b) Bigarray.kind -> ('a, 'b) t
   (** Return a new queue, initially empty. *)
+
+  val length : ('a, 'b) t -> int
+  (** Number of elements in the queue. *)
 
   val push : ('a, 'b) t -> 'a -> unit
   (** [push q x] adds the elements [x] at the end of the queue [q]. *)
@@ -210,6 +169,12 @@ module Weighted = struct
 
     val create : ?capacity:int -> ('a, 'b) Bigarray.kind -> ('a, 'b) t * int
     (** Return a new queue, initially empty with the real capacity of it. *)
+
+    val length : ('a, 'b) t -> int
+    (** Number of elements in the queue. *)
+
+    val available : ('a, 'b) t -> int
+    (** Free cells availables on the queue. *)
 
     val push_exn : ('a, 'b) t -> 'a -> unit
     (** [push_exn q x] adds the elements [x] at the end of the queue [q]. It
@@ -341,6 +306,12 @@ module Weighted = struct
 
     val create : ?capacity:int -> ('a, 'b) Bigarray.kind -> ('a, 'b) t * int
     (** Return a new queue, initially empty with the real capacity of it. *)
+
+    val length : ('a, 'b) t -> int
+    (** Number of elements in the queue. *)
+
+    val available : ('a, 'b) t -> int
+    (** Free cells availables on the queue. *)
 
     val push_exn : ('a, 'b) t -> 'a -> ('a, 'b) t
     (** [push_exn q x] adds the elements [x] at the end of the queue [q] and

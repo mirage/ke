@@ -146,6 +146,8 @@ module Weighted = struct
   let[@inline always] available t = t.c - (t.w - t.r)
   let is_empty t = (empty [@inlined]) t
 
+  let length q = size q
+
   let[@inline always] to_power_of_two v =
     let res = ref (pred v) in
     res := !res lor (!res lsr 1) ;

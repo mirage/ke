@@ -16,6 +16,8 @@ let[@inline always] size t = t.w - t.r
 let[@inline always] available t = t.c - (t.w - t.r)
 let[@inline always] full t = size t = t.c
 
+let length q = size q
+
 let[@inline always] to_power_of_two v =
   let res = ref (pred v) in
   res := !res lor (!res lsr 1) ;
@@ -153,6 +155,8 @@ module Weighted = struct
   let[@inline always] full t = size t = t.c
   let[@inline always] available t = t.c - (t.w - t.r)
   let is_empty t = (empty [@inlined]) t
+
+  let length q = size q
 
   let create ?capacity kind =
     let capacity =
