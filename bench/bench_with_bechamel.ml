@@ -285,13 +285,6 @@ let setup_logs style_renderer level =
 
 let _, _ = setup_logs (Some `Ansi_tty) (Some Logs.Debug)
 
-let unzip =
-  let rec go (l1, l2) = function
-    | [] -> (List.rev l1, List.rev l2)
-    | (x, y) :: r -> go (x :: l1, y :: l2) r
-  in
-  go ([], [])
-
 let () =
   let ols =
     Analyze.ols ~r_square:true ~bootstrap:0 ~predictors:Measure.[|run|]
