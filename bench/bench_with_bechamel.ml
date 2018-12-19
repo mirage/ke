@@ -310,16 +310,24 @@ let () =
       (fun x -> Analyze.all ransac x results)
       instances
   in
-  let ols_results, ransac_results = measure_and_analyze tests in
+  let ols_results, ransac_results = unzip (List.map measure_and_analyze tests) in
+  List.iter
+    (fun results ->
+  List.iter
+    (fun (instance, result) ->
+      Fmt.pr "%a: @[<hov>]%a@]\n%!"
+        Label.pp (Measure.label instance)
+        pp_ols_results result)
+      (zip instances results))
+    ols_results ;
+  List.iter
+    (fun results ->
   List.iter
     (fun (instance, results) ->
-      Fmt.pr "[OLS] ---------- %a ----------\n%!" Label.pp (Measure.label instance) ;
-      Fmt.pr "%a\n%!" Fmt.(list ~sep:(always "@\n") pp_ols_results) results)
-    (zip instances ols_results) ;
-  List.iter
-    (fun (instance, results) ->
-       Fmt.pr "[RANSAC] ---------- %a ----------\n%!" Label.pp (Measure.label instance) ;
-       Fmt.pr "%a\n%!" Fmt.(list ~sep:(always "@\n") pp_ransac_results) results)
-    (zip instances ransac_results)
+       Fmt.pr "%a: %a\n%!"
+         Label.pp (Measure.label instance)
+         pp_ransac_results results)
+    (zip instances results))
+    ransac_results
 
 
