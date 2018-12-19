@@ -21,6 +21,9 @@ We extended implementations to have a limit of elements inside (see
 `Rke.Weighted` and `Fke.Weigted`). The purpose of it is to limit memory
 consumption of queue when we use it in some contexts (like /encoder/).
 
+Again, as a part of the MirageOS project, `Ke` does not rely on C stubs,
+`Obj.magic` and so on.
+
 Author: Romain Calascibetta <romain.calascibetta@gmail.com>
 Documentation: https://dinosaure.github.io/dinosaure/ke/
 
