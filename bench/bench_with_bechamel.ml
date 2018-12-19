@@ -221,25 +221,16 @@ let pp_ols_result ppf result =
   in
   match Analyze.OLS.estimates result with
   | Some estimates ->
-      Fmt.pf ppf "%a per %a = %a [r²: %a]" Label.pp
-        (Analyze.OLS.responder result)
-        Fmt.(Dump.list Label.pp)
-        (Analyze.OLS.predictors result)
+      Fmt.pf ppf "%a [r²: %a]"
         Fmt.(styled style_by_r_square (Dump.list float))
         estimates
         Fmt.(option float)
         (Analyze.OLS.r_square result)
   | None ->
-      Fmt.pf ppf "%a per %a = #unable-to-compute" Label.pp
-        (Analyze.OLS.responder result)
-        Fmt.(Dump.list Label.pp)
-        (Analyze.OLS.predictors result)
+      Fmt.pf ppf "#unable-to-compute"
 
 let pp_ransac_result ppf result =
-  Fmt.pf ppf "%a per %a = %04.04f [error: %04.04f]" Label.pp
-    (Analyze.RANSAC.responder result)
-    Label.pp
-    (Analyze.RANSAC.predictor result)
+  Fmt.pf ppf "%04.04f [error: %04.04f]"
     (Analyze.RANSAC.mean result)
     (Analyze.RANSAC.error result)
 
