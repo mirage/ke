@@ -17,14 +17,15 @@ get some elements faster than a sequence of `Queue.pop`.
 
 Then we provide a functionnal interface `Fke` or an imperative interface `Rke`.
 
-We extended implementations to have a limit of elements inside (see
+We extended implementations to have a limit of elements to store (see
 `Rke.Weighted` and `Fke.Weigted`). The purpose of it is to limit memory
-consumption of queue when we use it in some contexts (like /encoder/).
+consumption of queue when we use it in some contexts (like _encoder_).
 
 Again, as a part of the MirageOS project, `Ke` does not rely on C stubs,
 `Obj.magic` and so on.
 
 Author: Romain Calascibetta <romain.calascibetta@gmail.com>
+
 Documentation: https://dinosaure.github.io/dinosaure/ke/
 
 Notes about Implementations
@@ -33,7 +34,7 @@ Notes about Implementations
 The functionnal implementation `Fke` is come from the Okazaki's queue
 implementation with GADT to discard impossible case.
 
-`Rke`, `Rke.Weighted` and `Fke.Weithed` was limited by kind and follow Xen's
+`Rke`, `Rke.Weighted` and `Fke.Weighted` was limited by kind and follow Xen's
 implementation of the shared memory ring-buffer. Length of the internal buffer
 is, in any case, a power of two - that means, in some context, for a large
 amount of elements, this kind of queue does not fit on your request.
