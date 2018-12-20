@@ -176,8 +176,8 @@ module Weighted = struct
     , capacity )
 
   let from v =
-    if not (is_power_of_two (Bigarray.Array1.dim x)) then Fmt.invalid_arg "RBA.from" ;
-    let c = Bigarray.Array1.dim c in
+    if not (is_power_of_two (Bigarray.Array1.dim v)) then Fmt.invalid_arg "RBA.from" ;
+    let c = Bigarray.Array1.dim v in
     let k = Bigarray.Array1.kind v in
     { r= 0
     ; w= 0
