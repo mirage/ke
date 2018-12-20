@@ -8,6 +8,7 @@ dev-repo:     "git+https://github.com/dinosaure/ke.git"
 doc:          "https://dinosaure.github.io/ke/"
 license:      "MIT"
 synopsis:     "Queue implementation"
+description:  """Queue implementation in OCaml (functional and imperative queue)"""
 
 build: [
   [ "dune" "subst" ]
