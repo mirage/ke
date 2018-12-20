@@ -158,7 +158,7 @@ module Weighted = struct
     succ !res
 
   let[@inline always] is_power_of_two v =
-    (v <> 0) && ((v land (lnot v + 1)) = x)
+    (v <> 0) && ((v land (lnot v + 1)) = v)
 
   let create ?capacity kind =
     let capacity =
