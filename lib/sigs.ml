@@ -431,5 +431,6 @@ module Weighted = struct
     (** / **)
 
     val unsafe_bigarray : ('a, 'b) t -> ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
+    val from : ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t -> ('a, 'b) t
   end
 end
