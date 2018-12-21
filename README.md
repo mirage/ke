@@ -26,7 +26,7 @@ Again, as a part of the MirageOS project, `Ke` does not rely on C stubs,
 
 Author: Romain Calascibetta <romain.calascibetta@gmail.com>
 
-Documentation: https://dinosaure.github.io/dinosaure/ke/
+Documentation: https://mirage.github.io/ke/
 
 Notes about Implementations
 ===========================
