@@ -1,0 +1,4 @@
+[
+  {"name": "First node", "time": "0", "ancestors": []},
+  {"name": "Second node", "time": "1", "ancestors": [0]}
+]
