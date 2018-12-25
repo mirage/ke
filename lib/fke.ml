@@ -128,6 +128,8 @@ let length = function
   | Shallow (Two _) -> 2
   | Shallow (Three _) -> 3
 
+let pp ?sep pp_elt = Fmt.iter ?sep iter pp_elt
+
 module Weighted = struct
   type ('a, 'b) t =
     { r: int

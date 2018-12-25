@@ -41,6 +41,9 @@ module type F = sig
   val fold : ('acc -> 'x -> 'acc) -> 'acc -> 'x t -> 'acc
   (** [fold f a q] is equivalent to [List.fold_left f a l], where [l] is the
      list of [q]'s elements. The queue remains unchanged. *)
+
+  val pp : ?sep:unit Fmt.t -> 'a Fmt.t -> 'a t Fmt.t
+  (** Pretty-printer of {!t}. *)
 end
 
 module type R = sig
