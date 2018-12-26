@@ -106,14 +106,16 @@ end
 
 open Crowbar
 
-type tree = Tree of Value.t * tree list
+type tree = Tree of Value.t * tree list * bool
 
-let rec list_of_tree (Tree (v, x)) : [`Push of Value.t | `Pop] list =
-  [`Push v] @ List.concat (List.map list_of_tree x) @ [`Pop]
+let rec list_of_tree (Tree (v, x, pop)) : [`Push of Value.t | `Pop] list =
+  if pop
+  then [`Push v] @ List.concat (List.map list_of_tree x) @ [`Pop]
+  else [`Push v] @ List.concat (List.map list_of_tree x)
 
 let generate : tree gen =
   let value = map [range 30] Value.of_int in
-  fix @@ fun m -> map [value; list m] (fun v l -> Tree (v, l))
+  fix @@ fun m -> map [value; list m; bool] (fun v l pop -> Tree (v, l, pop))
 
 let action_of_tree tree : Value.t Stack.t =
   let lst = list_of_tree tree in
