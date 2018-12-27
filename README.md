@@ -1,6 +1,8 @@
 Ke - Fast implementation of Queue in OCaml
 ==========================================
 
+![travis-ci](https://travis-ci.org/mirage/ke.svg?banch=master)
+
 Queue or FIFO is one of the most famous data-structure used in several
 algorithms. `Ke` provides some implementations of it in a functionnal or
 imperative way.
