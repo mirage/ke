@@ -1,0 +1,13 @@
+language: c
+install:
+  - wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-opam.sh
+  - wget https://raw.githubusercontent.com/dinosaure/ocaml-travisci-skeleton/master/.travis-docgen.sh
+script: bash -ex .travis-opam.sh
+sudo: true
+env:
+  matrix:
+  - PACKAGE="ke" OCAML_VERSION=4.03 TESTS=true
+  - PACKAGE="ke" OCAML_VERSION=4.04 TESTS=true
+  - PACKAGE="ke" OCAML_VERSION=4.05 TESTS=true
+  - PACKAGE="ke" OCAML_VERSION=4.06 TESTS=true
+  - PACKAGE="ke" OCAML_VERSION=4.07 TESTS=true
