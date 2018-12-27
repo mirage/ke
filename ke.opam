@@ -20,5 +20,6 @@ depends: [
   "ocaml"      {>= "4.03.0"}
   "dune"       {build}
   "fmt"
+  "alcotest"   {with-test}
   "bigstringaf"
 ]
