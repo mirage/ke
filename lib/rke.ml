@@ -138,6 +138,9 @@ let fold f a t =
   iter (fun x -> a := f !a x) t ;
   !a
 
+let pp ?sep pp_elt = Fmt.iter ?sep iter pp_elt
+let dump pp_elt = Fmt.Dump.iter iter (Fmt.always "rke") pp_elt
+
 module Weighted = struct
   type ('a, 'b) t =
     { mutable r: int
@@ -264,4 +267,7 @@ module Weighted = struct
     let a = ref a in
     iter (fun x -> a := f !a x) t ;
     !a
+
+  let pp ?sep pp_elt = Fmt.iter ?sep iter pp_elt
+  let dump pp_elt = Fmt.Dump.iter iter (Fmt.always "rke:weighted") pp_elt
 end

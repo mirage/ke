@@ -44,6 +44,9 @@ module type F = sig
 
   val pp : ?sep:unit Fmt.t -> 'a Fmt.t -> 'a t Fmt.t
   (** Pretty-printer of {!t}. *)
+
+  val dump : 'a Fmt.t -> 'a t Fmt.t
+  (** Human-readable pretty-printer of {!t}. *)
 end
 
 module type R = sig
@@ -154,6 +157,12 @@ module type R = sig
   val fold : ('acc -> 'x -> 'acc) -> 'acc -> ('x, 'b) t -> 'acc
   (** [fold f a q] is equivalent to [List.fold_left f a l], where [l] is the
      list of [q]'s elements. The queue remains unchanged. *)
+
+  val pp : ?sep:unit Fmt.t -> 'a Fmt.t -> ('a, 'b) t Fmt.t
+  (** Pretty-printer of {!t}. *)
+
+  val dump : 'a Fmt.t -> ('a, 'b) t Fmt.t
+  (** Human-readable pretty-printer of {!t}. *)
 end
 
 module Weighted = struct
@@ -292,6 +301,12 @@ module Weighted = struct
     val fold : ('acc -> 'x -> 'acc) -> 'acc -> ('x, 'b) t -> 'acc
     (** [fold f a q] is equivalent to [List.fold_left f a l], where [l] is the
        list of [q]'s elements. The queue remains unchanged. *)
+
+    val pp : ?sep:unit Fmt.t -> 'a Fmt.t -> ('a, 'b) t Fmt.t
+    (** Pretty-printer of {!t}. *)
+
+    val dump : 'a Fmt.t -> ('a, 'b) t Fmt.t
+    (** Human-readable pretty-printer of {!t}. *)
   end
 
   module type F = sig
@@ -430,6 +445,12 @@ module Weighted = struct
     val fold : ('acc -> 'x -> 'acc) -> 'acc -> ('x, 'b) t -> 'acc
     (** [fold f a q] is equivalent to [List.fold_left f a l], where [l] is the
        list of [q]'s elements. The queue remains unchanged. *)
+
+    val pp : ?sep:unit Fmt.t -> 'a Fmt.t -> ('a, 'b) t Fmt.t
+    (** Pretty-printer of {!t}. *)
+
+    val dump : 'a Fmt.t -> ('a, 'b) t Fmt.t
+    (** Human-readable pretty-printer of {!t}. *)
 
     (** / **)
 
