@@ -88,6 +88,12 @@ module type R = sig
   (** [cons q x] adds element [x] at the front of the given queue [q]. It
      returns [None] if it fails. *)
 
+  val copy : ('a, 'b) t -> ('a, 'b) t
+  (** Return a copy of the given queue. *)
+
+  val clear : ('a, 'b) t -> unit
+  (** Discard all elements from a queue. *)
+
   module N : sig
     (** The type of the internal bigarray of {!t}. *)
     type ('a, 'b) bigarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
@@ -218,6 +224,12 @@ module Weighted = struct
     val cons : ('a, 'b) t -> 'a -> unit option
     (** [cons q x] adds element [x] at the front of the given queue [q]. It
        returns [None] if it fails. *)
+
+    val copy : ('a, 'b) t -> ('a, 'b) t
+    (** Return a copy of the given queue. *)
+
+    val clear : ('a, 'b) t -> unit
+    (** Discard all elements from a queue. *)
 
     module N : sig
       (** The type of the internal bigarray of {!t}. *)
@@ -362,6 +374,12 @@ module Weighted = struct
     val cons_exn : ('a, 'b) t -> 'a -> ('a, 'b) t
     (** [cons q x] adds element [x] at the front of the given queue [q]. It
        raises {!Empty} if the given queue [q] is full or the new queue [q']. *)
+
+    val copy : ('a, 'b) t -> ('a, 'b) t
+    (** Return a copy of the given queue. *)
+
+    val clear : ('a, 'b) t -> ('a, 'b) t
+    (** Discard all elements from a queue. *)
 
     module N : sig
       (** The type of the internal bigarray of {!t}. *)

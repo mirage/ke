@@ -42,6 +42,15 @@ let create ?capacity kind =
   ; k= kind
   ; v= Bigarray.Array1.create kind Bigarray.c_layout capacity }
 
+let copy t =
+  let v = Bigarray.Array1.create t.k Bigarray.c_layout t.c in
+  Bigarray.Array1.blit t.v v ;
+  { r= t.r
+  ; w= t.w
+  ; c= t.c
+  ; v
+  ; k= t.k }
+
 let grow t want =
   let max : int -> int -> int = max in
   let c = to_power_of_two (max 1 (max want (size t))) in
@@ -141,6 +150,10 @@ let fold f a t =
 let pp ?sep pp_elt = Fmt.iter ?sep iter pp_elt
 let dump pp_elt = Fmt.Dump.iter iter (Fmt.always "rke") pp_elt
 
+let clear q =
+  q.r <- 0 ;
+  q.w <- 0
+
 module Weighted = struct
   type ('a, 'b) t =
     { mutable r: int
@@ -175,6 +188,15 @@ module Weighted = struct
       ; k= kind
       ; v= Bigarray.Array1.create kind Bigarray.c_layout capacity }
     , capacity )
+
+  let copy t =
+    let v = Bigarray.Array1.create t.k Bigarray.c_layout t.c in
+    Bigarray.Array1.blit t.v v ;
+    { r= t.r
+    ; w= t.w
+    ; c= t.c
+    ; v
+    ; k= t.k }
 
   let push_exn t v =
     if (full [@inlined]) t then raise Full ;
@@ -270,4 +292,8 @@ module Weighted = struct
 
   let pp ?sep pp_elt = Fmt.iter ?sep iter pp_elt
   let dump pp_elt = Fmt.Dump.iter iter (Fmt.always "rke:weighted") pp_elt
+
+  let clear q =
+    q.r <- 0 ;
+    q.w <- 0
 end

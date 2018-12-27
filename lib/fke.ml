@@ -178,6 +178,15 @@ module Weighted = struct
       ; v= Bigarray.Array1.create kind Bigarray.c_layout capacity }
     , capacity )
 
+  let copy t =
+    let v = Bigarray.Array1.create t.k Bigarray.c_layout t.c in
+    Bigarray.Array1.blit t.v v ;
+    { r= t.r
+    ; w= t.w
+    ; c= t.c
+    ; v
+    ; k= t.k }
+
   let from v =
     if not (is_power_of_two (Bigarray.Array1.dim v)) then Fmt.invalid_arg "RBA.from" ;
     let c = Bigarray.Array1.dim v in
@@ -277,6 +286,9 @@ module Weighted = struct
     let a = ref a in
     iter (fun x -> a := f !a x) t ;
     !a
+
+  let clear t =
+    { t with r= 0; w= 0 }
 
   let unsafe_bigarray { v; _ } = v
 
