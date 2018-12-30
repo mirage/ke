@@ -242,7 +242,7 @@ module Weighted = struct
         if rst > 0 then (
           blit v off t.v msk pre ;
           blit v (off + pre) t.v 0 rst ;
-          [ Bigarray.Array1.sub t.v ((mask [@inlined]) t t.w) len
+          [ Bigarray.Array1.sub t.v ((mask [@inlined]) t t.w) pre
           ; Bigarray.Array1.sub t.v 0 rst ] )
         else (
           blit v off t.v msk len ;
