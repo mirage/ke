@@ -160,6 +160,11 @@ module type R = sig
      recently entered to the most recently entered. The queue itself is
      unchanged. *)
 
+  val rev_iter : ('a -> unit) -> ('a, 'b) t -> unit
+  (** [iter f q] applies [f] in turn to all elements of [q], from the most
+     recently entered to the least recently entered. The queue itself is
+     unchanged. *)
+
   val fold : ('acc -> 'x -> 'acc) -> 'acc -> ('x, 'b) t -> 'acc
   (** [fold f a q] is equivalent to [List.fold_left f a l], where [l] is the
      list of [q]'s elements. The queue remains unchanged. *)
@@ -308,6 +313,11 @@ module Weighted = struct
     val iter : ('a -> unit) -> ('a, 'b) t -> unit
     (** [iter f q] applies [f] in turn to all elements of [q], from the least
        recently entered to the most recently entered. The queue itself is
+       unchanged. *)
+
+    val rev_iter : ('a -> unit) -> ('a, 'b) t -> unit
+    (** [iter f q] applies [f] in turn to all elements of [q], from the most
+       recently entered to the least recently entered. The queue itself is
        unchanged. *)
 
     val fold : ('acc -> 'x -> 'acc) -> 'acc -> ('x, 'b) t -> 'acc
@@ -460,6 +470,11 @@ module Weighted = struct
        recently entered to the most recently entered. The queue itself is
        unchanged. *)
 
+    val rev_iter : ('a -> unit) -> ('a, 'b) t -> unit
+    (** [iter f q] applies [f] in turn to all elements of [q], from the most
+       recently entered to the least recently entered. The queue itself is
+       unchanged. *)
+
     val fold : ('acc -> 'x -> 'acc) -> 'acc -> ('x, 'b) t -> 'acc
     (** [fold f a q] is equivalent to [List.fold_left f a l], where [l] is the
        list of [q]'s elements. The queue remains unchanged. *)
@@ -472,7 +487,9 @@ module Weighted = struct
 
     (** / **)
 
-    val unsafe_bigarray : ('a, 'b) t -> ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
+    val unsafe_bigarray :
+      ('a, 'b) t -> ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
+
     val from : ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t -> ('a, 'b) t
   end
 end
