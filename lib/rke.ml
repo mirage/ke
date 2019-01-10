@@ -109,7 +109,7 @@ module N = struct
   let keep_exn t ~blit ~length ?(off = 0) ?len v =
     let len = match len with None -> length v - off | Some len -> len in
     if (size [@inlined]) t < len then raise Empty ;
-    let msk = (mask [@inlined]) t t.w in
+    let msk = (mask [@inlined]) t t.r in
     let pre = t.c - msk in
     let rst = len - pre in
     if rst > 0 then (
