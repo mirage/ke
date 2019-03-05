@@ -41,6 +41,8 @@ let create ?capacity kind =
   ; k= kind
   ; v= Bigarray.Array1.create kind Bigarray.c_layout capacity }
 
+let capacity { c; _ } = c
+
 let copy t =
   let v = Bigarray.Array1.create t.k Bigarray.c_layout t.c in
   Bigarray.Array1.blit t.v v ;
@@ -88,6 +90,31 @@ let peek_exn t =
   Bigarray.Array1.unsafe_get t.v ((mask [@inlined]) t t.r)
 
 let peek t = try Some (peek_exn t) with Empty -> None
+
+let blit src src_off dst dst_off len =
+  let a = Bigarray.Array1.sub src src_off len in
+  let b = Bigarray.Array1.sub dst dst_off len in
+  Bigarray.Array1.blit a b
+
+let compress t =
+  let len = length t in
+  let msk = (mask [@inlined]) t t.r in
+  let pre = t.c - msk in
+  let rst = len - pre in
+  if rst > 0 then
+    if (available [@inlined]) t >= pre
+    then (
+      (* XXX(dinosaure): in this case, [pre + rst <= msk], so [blit] will not
+         overlap bytes at the end of [t.v] (at offset [msk]). *)
+      blit t.v 0 t.v pre rst ;
+      blit t.v msk t.v 0 pre )
+    else (
+      let tmp = Bigarray.Array1.create t.k Bigarray.c_layout pre in
+      blit t.v msk tmp 0 pre ;
+      blit t.v 0 t.v pre rst ;
+      blit tmp 0 t.v 0 pre )
+  else blit t.v msk t.v 0 len ;
+  t.r <- 0 ; t.w <- len
 
 module N = struct
   type ('a, 'b) bigarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
@@ -228,6 +255,26 @@ module Weighted = struct
     Bigarray.Array1.unsafe_get t.v ((mask [@inlined]) t t.r)
 
   let peek t = try Some (peek_exn t) with Empty -> None
+
+  let compress t =
+    let len = length t in
+    let msk = (mask [@inlined]) t t.r in
+    let pre = t.c - msk in
+    let rst = len - pre in
+    if rst > 0 then
+      if (available [@inlined]) t >= pre
+      then (
+        (* XXX(dinosaure): in this case, [pre + rst <= msk], so [blit] will not
+          overlap bytes at the end of [t.v] (at offset [msk]). *)
+        blit t.v 0 t.v pre rst ;
+        blit t.v msk t.v 0 pre )
+      else (
+        let tmp = Bigarray.Array1.create t.k Bigarray.c_layout pre in
+        blit t.v msk tmp 0 pre ;
+        blit t.v 0 t.v pre rst ;
+        blit tmp 0 t.v 0 pre )
+    else blit t.v msk t.v 0 len ;
+    t.r <- 0 ; t.w <- len
 
   module N = struct
     type ('a, 'b) bigarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t

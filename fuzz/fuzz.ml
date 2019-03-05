@@ -230,3 +230,40 @@ let () =
   if not (Compare.rke queue rke) then
     failf "%a <> %a" Fmt.(Dump.queue int) queue (pp_rke Fmt.int) rke ;
   ()
+
+let ( >>= ) = dynamic_bind
+
+let failf fmt = Fmt.kstrf fail fmt
+
+let blit src src_off dst dst_off len =
+  let a = Bigarray.Array1.sub src src_off len in
+  let b = Bigarray.Array1.sub dst dst_off len in
+  Bigarray.Array1.blit a b
+
+let blit_from_string src src_off dst dst_off len =
+  Bigstringaf.blit_from_string src ~src_off dst ~dst_off ~len
+
+let compress_and_push =
+  map [ range 0x1000 >>= bytes_fixed; range 0x1000 >>= bytes_fixed; range (2 * 0x1000) ] @@ fun fill0 fill1 capacity ->
+  let q, capacity = Ke.Rke.Weighted.create ~capacity Bigarray.Char in
+  match Ke.Rke.Weighted.N.push q ~blit:blit_from_string ~length:String.length fill0 with
+  | Some [ fill0' ] ->
+    let fill0' = Bigstringaf.create (Bigstringaf.length fill0') in
+    Ke.Rke.Weighted.compress q ;
+    Ke.Rke.Weighted.N.keep_exn q ~blit ~length:Bigstringaf.length fill0' ;
+    (match Ke.Rke.Weighted.N.push q ~blit:blit_from_string ~length:String.length fill1 with
+     | Some [ fill1' ] ->
+       let a = Bigstringaf.memcmp_string fill0' 0 fill0 0 (String.length fill0) in
+       let b = Bigstringaf.memcmp_string fill1' 0 fill1 0 (String.length fill1) in
+       if a <> 0 || b <> 0 then failf "Queue differs from inputs"
+     | Some _ -> failf "push returns multiple payloads"
+     | None ->
+       if String.length fill0 + String.length fill1 <= capacity
+       then failf "push fails for unknow reason"
+       else bad_test ())
+  | Some _ -> failf "push returns multiple payloads."
+  | None ->
+    if String.length fill0 <= capacity
+    then failf "push fails for unknow reason"
+    else bad_test ()
+

@@ -63,6 +63,9 @@ module type R = sig
   val create : ?capacity:int -> ('a, 'b) Bigarray.kind -> ('a, 'b) t
   (** Return a new queue, initially empty. *)
 
+  val capacity : ('a, 'b) t -> int
+  (** Returns how many objects [t] can store. *)
+
   val length : ('a, 'b) t -> int
   (** Number of elements in the queue. *)
 
@@ -93,6 +96,11 @@ module type R = sig
 
   val clear : ('a, 'b) t -> unit
   (** Discard all elements from a queue. *)
+
+  val compress : ('a, 'b) t -> unit
+  (** Compress queue, read cursor will be setted to [0] and data will be move
+     to. This operation permits to provide much more space for a
+     {!push}/{!N.push} operation - but it can not ensure enough free space. *)
 
   module N : sig
     (** The type of the internal bigarray of {!t}. *)
@@ -235,6 +243,11 @@ module Weighted = struct
 
     val clear : ('a, 'b) t -> unit
     (** Discard all elements from a queue. *)
+
+    val compress : ('a, 'b) t -> unit
+    (** Compress queue, read cursor will be setted to [0] and data will be move
+       to. This operation permits to provide much more space for a
+       {!push}/{!N.push} operation - but it can not ensure enough free space. *)
 
     module N : sig
       (** The type of the internal bigarray of {!t}. *)

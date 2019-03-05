@@ -5,6 +5,7 @@ module type Q = sig
 
   exception Empty
 
+  val available : t -> int
   val fold : ('a -> int -> 'a) -> 'a -> t -> 'a
   val create : unit -> t
   val push : t -> int -> unit
@@ -15,6 +16,7 @@ module type Q = sig
   val iter : (int -> unit) -> t -> unit
   val copy : t -> t
   val clear : t -> unit
+  val compress : t -> unit
 end
 
 module Make (Q : Q) = struct
@@ -133,6 +135,37 @@ module Make (Q : Q) = struct
     for i = 1 to 10 do Q.push q i done ;
     let i = ref 1 in
     Q.iter (fun j -> Alcotest.(check int) "iter" !i j; incr i) q
+
+  let test_7 =
+    Alcotest.test_case "test-7" `Quick
+    @@ fun () ->
+    let q = Q.create () in
+    for i = 1 to 10 do Q.push q i done ;
+    for _ = 1 to 10 do ignore (Q.pop_exn q) done ;
+    for i = 1 to 10 do Q.push q i done ;
+    let expect = [ 1; 2; 3; 4; 5; 6; 7; 8; 9; 10 ] in
+    Alcotest.(check (list int)) "[ 1; 2; 3; 4; 5; 6; 7; 8; 9; 10 ]"
+      (to_list q) expect ;
+    Q.compress q ;
+    Alcotest.(check (list int)) "[ 1; 2; 3; 4; 5; 6; 7; 8; 9; 10 ]"
+      (to_list q) expect
+
+  let test_8 =
+    Alcotest.test_case "test-8" `Quick
+    @@ fun () ->
+    let q = Q.create () in
+    let m = Q.available q in
+    for i = 1 to m / 2 do Q.push q i done ;
+    for _ = 1 to m / 2 do ignore (Q.pop_exn q) done ;
+    for i = 1 to m do Q.push q i done ;
+    let expect = to_list q in
+    for _ = 1 to m do ignore (Q.pop_exn q) done ;
+    for i = 1 to m do Q.push q i done ;
+    Alcotest.(check (list int)) "filled"
+      (to_list q) expect ;
+    Q.compress q ;
+    Alcotest.(check (list int)) "filled"
+      (to_list q) expect
 end
 
 module Test_rke = Make (struct
@@ -141,8 +174,9 @@ module Test_rke = Make (struct
     module W : sig exception Empty end = struct include Ke.Rke end
     include W
 
+    let available = Ke.Rke.capacity
     let fold = Ke.Rke.fold
-    let create () = Ke.Rke.create Bigarray.Int
+    let create () = Ke.Rke.create ~capacity:0x100 Bigarray.Int
     let push = Ke.Rke.push
     let pop_exn = Ke.Rke.pop_exn
     let peek_exn = Ke.Rke.peek_exn
@@ -151,6 +185,7 @@ module Test_rke = Make (struct
     let iter = Ke.Rke.iter
     let copy = Ke.Rke.copy
     let clear = Ke.Rke.clear
+    let compress = Ke.Rke.compress
   end)
 
 module Test_weighted_rke = Make (struct
@@ -159,6 +194,7 @@ module Test_weighted_rke = Make (struct
     module W : sig exception Empty end = struct include Ke.Rke.Weighted end
     include W
 
+    let available = Ke.Rke.Weighted.available
     let fold = Ke.Rke.Weighted.fold
     let create () = let q, _ = Ke.Rke.Weighted.create ~capacity:0x100 Bigarray.Int in q
     let push = Ke.Rke.Weighted.push_exn
@@ -169,6 +205,7 @@ module Test_weighted_rke = Make (struct
     let iter = Ke.Rke.Weighted.iter
     let copy = Ke.Rke.Weighted.copy
     let clear = Ke.Rke.Weighted.clear
+    let compress = Ke.Rke.Weighted.compress
   end)
 
 let () = Alcotest.run "ke"
@@ -178,11 +215,15 @@ let () = Alcotest.run "ke"
              ; Test_rke.test_3
              ; Test_rke.test_4
              ; Test_rke.test_5
-             ; Test_rke.test_6 ]
+             ; Test_rke.test_6
+             ; Test_rke.test_7
+             ; Test_rke.test_8 ]
     ; "rke:weighted", [ Test_weighted_rke.test_0
                       ; Test_weighted_rke.test_1
                       ; Test_weighted_rke.test_2
                       ; Test_weighted_rke.test_3
                       ; Test_weighted_rke.test_4
                       ; Test_weighted_rke.test_5
-                      ; Test_weighted_rke.test_6 ] ]
+                      ; Test_weighted_rke.test_6
+                      ; Test_weighted_rke.test_7
+                      ; Test_weighted_rke.test_8 ] ]

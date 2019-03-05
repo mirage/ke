@@ -1,33 +1,5 @@
-open Toolkit
 open Bechamel
-
-module Realtime_clock = struct
-  type label = string
-  type witness = unit
-  type value = int64 ref
-
-  let load () = ()
-  let unload () = ()
-  let make () = ()
-  let label () = "realtime-clock"
-  let epsilon () = {contents= 0L}
-  let blit () v = v := Oclock.gettime Oclock.realtime
-  let diff a b = {contents= Int64.sub !b !a}
-  let float x = Int64.to_float !x
-end
-
-module Extension = struct
-  include Extension
-
-  let realtime_clock = Measure.make (module Realtime_clock)
-end
-
-module Instance = struct
-  include Instance
-
-  let realtime_clock =
-    Measure.instance (module Realtime_clock) Extension.realtime_clock
-end
+open Toolkit
 
 let random ln =
   let ic = open_in "/dev/urandom" in
@@ -164,86 +136,18 @@ let test_push_and_pop_queue =
 let tests_push_and_pop =
   [test_push_and_pop_fke; test_push_and_pop_rke; test_push_and_pop_queue]
 
-let zip l1 l2 =
-  let rec go acc = function
-    | [], [] -> List.rev acc
-    | x1 :: r1, x2 :: r2 -> go ((x1, x2) :: acc) (r1, r2)
-    | _, _ -> assert false
-  in
-  go [] (l1, l2)
+let () = Bechamel_notty.Unit.add Instance.monotonic_clock "ns"
+let () = Bechamel_notty.Unit.add Instance.minor_allocated "w"
+let () = Bechamel_notty.Unit.add Instance.major_allocated "mw"
+let () = Bechamel_notty.Unit.add Bechamel_perf.Instance.cpu_clock "ns"
 
-let pp_ols_result ppf result =
-  let style_by_r_square =
-    match Analyze.OLS.r_square result with
-    | Some r_square ->
-        if r_square >= 0.95 then `Green
-        else if r_square >= 0.90 then `Yellow
-        else `Red
-    | None -> `None
-  in
-  match Analyze.OLS.estimates result with
-  | Some estimates ->
-      Fmt.pf ppf "%a [r²: %a]"
-        Fmt.(styled style_by_r_square (Dump.list float))
-        estimates
-        Fmt.(option float)
-        (Analyze.OLS.r_square result)
-  | None -> Fmt.pf ppf "#unable-to-compute"
-
-let pp_ransac_result ppf result =
-  Fmt.pf ppf "%04.04f [error: %04.04f]"
-    (Analyze.RANSAC.mean result)
-    (Analyze.RANSAC.error result)
-
-let pad n x =
-  if String.length x > n then x else x ^ String.make (n - String.length x) ' '
-
-let pp_ols_results : (string, Analyze.OLS.t) Hashtbl.t Fmt.t =
- fun ppf ->
-  Hashtbl.iter (fun test_name result ->
-      Fmt.pf ppf "@[<hov>[ols]%s = %a@]@\n"
-        (pad 30 @@ test_name)
-        pp_ols_result result )
-
-let pp_ransac_results : (string, Analyze.RANSAC.t) Hashtbl.t Fmt.t =
- fun ppf ->
-  Hashtbl.iter (fun test_name result ->
-      Fmt.pf ppf "@[<hov>[ransac]%s = %a@]@\n"
-        (pad 30 @@ test_name)
-        pp_ransac_result result )
-
-let reporter ppf =
-  let report src level ~over k msgf =
-    let k _ = over () ; k () in
-    let with_src_and_stamp h _ k fmt =
-      let dt = Mtime.Span.to_us (Mtime_clock.elapsed ()) in
-      Fmt.kpf k ppf
-        ("%s %a %a: @[" ^^ fmt ^^ "@]@.")
-        (pad 20 (Fmt.strf "%+04.0fus" dt))
-        Logs_fmt.pp_header (level, h)
-        Fmt.(styled `Magenta string)
-        (pad 20 @@ Logs.Src.name src)
-    in
-    msgf @@ fun ?header ?tags fmt -> with_src_and_stamp header tags k fmt
-  in
-  {Logs.report}
-
-let setup_logs style_renderer level =
-  Fmt_tty.setup_std_outputs ?style_renderer () ;
-  Logs.set_level level ;
-  Logs.set_reporter (reporter Fmt.stdout) ;
-  let quiet = match style_renderer with Some _ -> true | None -> false in
-  (quiet, Fmt.stdout)
-
-let _, _ = setup_logs (Some `Ansi_tty) (Some Logs.Debug)
+let (<.>) f g = fun x -> f (g x)
 
 let () =
-  let ols =
-    Analyze.ols ~r_square:true ~bootstrap:0 ~predictors:Measure.[|run|]
-  in
-  let ransac = Analyze.ransac ~filter_outliers:true ~predictor:Measure.run in
-  let instances =
-    Instance.[minor_allocated; major_allocated; cpu_clock; realtime_clock]
+  let ols = Analyze.ols ~r_square:true ~bootstrap:0 ~predictors:Measure.[|run|] in
+  let instances = Instance.[ minor_allocated
+                           ; major_allocated
+                           ; Bechamel_perf.Instance.cpu_clock ]
   in
   let tests =
     match Sys.argv with
@@ -254,49 +158,7 @@ let () =
     | [|_; "all"|] -> tests_push @ tests_big_push @ tests_push_and_pop
     | _ -> Fmt.invalid_arg "%s {push|all}" Sys.argv.(1)
   in
-  let ols_results = Hashtbl.create (List.length instances) in
-  let ransac_results = Hashtbl.create (List.length instances) in
-  let () =
-    List.iter
-      (fun x -> Hashtbl.add ols_results (Measure.label x) (Hashtbl.create 16))
-      instances
-  in
-  let () =
-    List.iter
-      (fun x ->
-        Hashtbl.add ransac_results (Measure.label x) (Hashtbl.create 16) )
-      instances
-  in
-  let measure_and_analyze test =
-    let results =
-      Benchmark.all ~stabilize:true ~quota:(Benchmark.s 2.) ~run:5000 instances
-        test
-    in
-    List.iter
-      (fun x ->
-        let r = Analyze.all ols x results in
-        Hashtbl.add
-          (Hashtbl.find ols_results (Measure.label x))
-          (Test.name test) r )
-      instances ;
-    List.iter
-      (fun x ->
-        let r = Analyze.all ransac x results in
-        Hashtbl.add
-          (Hashtbl.find ransac_results (Measure.label x))
-          (Test.name test) r )
-      instances
-  in
-  let () = List.iter measure_and_analyze tests in
-  Hashtbl.iter
-    (fun label results ->
-      Fmt.pr "%a: @[<v>%a@]\n%!" Label.pp label
-        Fmt.(hashtbl (using snd pp_ols_results))
-        results )
-    ols_results ;
-  Hashtbl.iter
-    (fun label results ->
-      Fmt.pr "%a: @[<v>%a@]\n%!" Label.pp label
-        Fmt.(hashtbl (using snd pp_ransac_results))
-        results )
-    ransac_results
+  let raw_results = List.map (Benchmark.all ~run:3000 ~quota:Benchmark.(s 1.5) instances) tests in
+  let results = List.map (fun raw_results -> List.map (fun instance -> Analyze.all ols instance raw_results) instances |> Analyze.merge ols instances) raw_results in
+  let rect = { Bechamel_notty.w= 80; h= 1 } in
+  List.iter (Notty_unix.(output_image <.> eol) <.> Bechamel_notty.Multiple.image_of_ols_results ~rect ~predictor:Measure.run) results
