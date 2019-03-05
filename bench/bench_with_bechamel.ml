@@ -161,4 +161,4 @@ let () =
   let raw_results = List.map (Benchmark.all ~run:3000 ~quota:Benchmark.(s 1.5) instances) tests in
   let results = List.map (fun raw_results -> List.map (fun instance -> Analyze.all ols instance raw_results) instances |> Analyze.merge ols instances) raw_results in
   let rect = { Bechamel_notty.w= 80; h= 1 } in
-  List.iter (Notty_unix.eol <.> Bechamel_notty.Multiple.image_of_ols_results ~rect ~predictor:Measure.run) results
+  List.iter (Notty_unix.(output_image <.> eol) <.> Bechamel_notty.Multiple.image_of_ols_results ~rect ~predictor:Measure.run) results
