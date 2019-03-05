@@ -136,53 +136,10 @@ let test_push_and_pop_queue =
 let tests_push_and_pop =
   [test_push_and_pop_fke; test_push_and_pop_rke; test_push_and_pop_queue]
 
-let zip l1 l2 =
-  let rec go acc = function
-    | [], [] -> List.rev acc
-    | x1 :: r1, x2 :: r2 -> go ((x1, x2) :: acc) (r1, r2)
-    | _, _ -> assert false
-  in
-  go [] (l1, l2)
-
-let pp_ols_result ppf result =
-  let style_by_r_square =
-    match Analyze.OLS.r_square result with
-    | Some r_square ->
-        if r_square >= 0.95 then `Green
-        else if r_square >= 0.90 then `Yellow
-        else `Red
-    | None -> `None
-  in
-  match Analyze.OLS.estimates result with
-  | Some estimates ->
-      Fmt.pf ppf "%a [r²: %a]"
-        Fmt.(styled style_by_r_square (Dump.list float))
-        estimates
-        Fmt.(option float)
-        (Analyze.OLS.r_square result)
-  | None -> Fmt.pf ppf "#unable-to-compute"
-
-let pp_ransac_result ppf result =
-  Fmt.pf ppf "%04.04f [error: %04.04f]"
-    (Analyze.RANSAC.mean result)
-    (Analyze.RANSAC.error result)
-
-let pad n x =
-  if String.length x > n then x else x ^ String.make (n - String.length x) ' '
-
-let pp_ols_results : (string, Analyze.OLS.t) Hashtbl.t Fmt.t =
- fun ppf ->
-  Hashtbl.iter (fun test_name result ->
-      Fmt.pf ppf "@[<hov>[ols]%s = %a@]@\n"
-        (pad 30 @@ test_name)
-        pp_ols_result result )
-
-let pp_ransac_results : (string, Analyze.RANSAC.t) Hashtbl.t Fmt.t =
- fun ppf ->
-  Hashtbl.iter (fun test_name result ->
-      Fmt.pf ppf "@[<hov>[ransac]%s = %a@]@\n"
-        (pad 30 @@ test_name)
-        pp_ransac_result result )
+let () = Bechamel_notty.Unit.add Instance.monotonic_clock "ns"
+let () = Bechamel_notty.Unit.add Instance.minor_allocated "w"
+let () = Bechamel_notty.Unit.add Instance.major_allocated "mw"
+let () = Bechamel_notty.Unit.add Bechamel_perf.Instance.cpu_clock "ns"
 
 let (<.>) f g = fun x -> f (g x)
 
@@ -204,4 +161,4 @@ let () =
   let raw_results = List.map (Benchmark.all ~run:3000 ~quota:Benchmark.(s 1.5) instances) tests in
   let results = List.map (fun raw_results -> List.map (fun instance -> Analyze.all ols instance raw_results) instances |> Analyze.merge ols instances) raw_results in
   let rect = { Bechamel_notty.w= 80; h= 1 } in
-  List.iter (Notty_unix.output_image <.> Bechamel_notty.Multiple.image_of_ols_results ~rect ~predictor:Measure.run) results
+  List.iter (Notty_unix.eol <.> Bechamel_notty.Multiple.image_of_ols_results ~rect ~predictor:Measure.run) results
