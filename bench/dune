@@ -1,7 +1,7 @@
 (executable
  (name bench_with_bechamel)
  (modules bench_with_bechamel)
- (libraries bigstringaf fmt.tty logs.fmt mtime.clock.os oclock ke bechamel bechamel.perf))
+ (libraries notty.unix bigstringaf ke bechamel bechamel.perf bechamel.notty))
 
 (executable
  (name bench_with_core)
