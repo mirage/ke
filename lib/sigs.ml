@@ -149,6 +149,9 @@ module type R = sig
       -> unit option
     (** Same as {!keep_exn} but if it fails, it returns [None]. *)
 
+    val peek : ('a, 'b) t -> ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t list
+    (** Returns a sub-part of available to read payloads. *)
+
     val unsafe_shift : ('a, 'b) t -> int -> unit
     (** [unsafe_shift q l] discards [l] elements in the given queue [q] without
        any verification. Mostly used after {!keep_exn}, if the last one does not
@@ -308,6 +311,9 @@ module Weighted = struct
         -> 'dst
         -> unit option
       (** Same as {!keep_exn} but if it fails, it returns [None]. *)
+
+      val peek : ('a, 'b) t -> ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t list
+      (** Returns a sub-part of available to read payloads. *)
 
       val unsafe_shift : ('a, 'b) t -> int -> unit
       (** [unsafe_shift q l] discards [l] elements in the given queue [q]

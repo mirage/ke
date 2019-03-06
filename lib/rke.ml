@@ -147,6 +147,18 @@ module N = struct
   let keep t ~blit ~length ?off ?len v =
     try Some (keep_exn t ~blit ~length ?off ?len v) with Empty -> None
 
+  let peek t =
+    let len = (size [@inlined]) t in
+    if len == 0 then []
+    else
+      let msk = (mask [@inlined]) t t.r in
+      let pre = t.c - msk in
+      let rst = len - pre in
+      if rst > 0 then
+        [ Bigarray.Array1.sub t.v msk pre
+        ; Bigarray.Array1.sub t.v 0 rst ]
+      else [ Bigarray.Array1.sub t.v msk len ]
+
   let unsafe_shift t len = t.r <- t.r + len
 
   let shift_exn t len =
@@ -316,6 +328,18 @@ module Weighted = struct
 
     let keep t ~blit ~length ?off ?len v =
       try Some (keep_exn t ~blit ~length ?off ?len v) with Empty -> None
+
+    let peek t =
+      let len = (size [@inlined]) t in
+      if len == 0 then []
+      else
+        let msk = (mask [@inlined]) t t.r in
+        let pre = t.c - msk in
+        let rst = len - pre in
+        if rst > 0 then
+          [ Bigarray.Array1.sub t.v msk pre
+          ; Bigarray.Array1.sub t.v 0 rst ]
+        else [ Bigarray.Array1.sub t.v msk len ]
 
     let unsafe_shift t len = t.r <- t.r + len
 
