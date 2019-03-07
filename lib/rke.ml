@@ -26,6 +26,8 @@ let[@inline always] to_power_of_two v =
   res := !res lor (!res lsr 16) ;
   succ !res
 
+let[@inline always] is_power_of_two v = v <> 0 && v land (lnot v + 1) = v
+
 let is_empty t = (empty [@inlined]) t
 
 let create ?capacity kind =
@@ -238,6 +240,13 @@ module Weighted = struct
     let v = Bigarray.Array1.create t.k Bigarray.c_layout t.c in
     Bigarray.Array1.blit t.v v ;
     {r= t.r; w= t.w; c= t.c; v; k= t.k}
+
+  let from v =
+    if not (is_power_of_two (Bigarray.Array1.dim v)) then
+      Fmt.invalid_arg "RBA.from" ;
+    let c = Bigarray.Array1.dim v in
+    let k = Bigarray.Array1.kind v in
+    {r= 0; w= 0; c; k; v}
 
   let push_exn t v =
     if (full [@inlined]) t then raise Full ;

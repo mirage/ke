@@ -348,6 +348,10 @@ module Weighted = struct
 
     val dump : 'a Fmt.t -> ('a, 'b) t Fmt.t
     (** Human-readable pretty-printer of {!t}. *)
+
+    (** / **)
+
+    val from : ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t -> ('a, 'b) t
   end
 
   module type F = sig
