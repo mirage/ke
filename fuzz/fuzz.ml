@@ -243,8 +243,9 @@ let blit src src_off dst dst_off len =
 let blit_from_string src src_off dst dst_off len =
   Bigstringaf.blit_from_string src ~src_off dst ~dst_off ~len
 
-let compress_and_push =
-  map [ range 0x1000 >>= bytes_fixed; range 0x1000 >>= bytes_fixed; range (2 * 0x1000) ] @@ fun fill0 fill1 capacity ->
+let () =
+  add_test ~name:"compress-and-push" [ range 0x100 >>= bytes_fixed; range 0x100 >>= bytes_fixed ] @@ fun fill0 fill1 ->
+  let capacity = String.length fill0 + String.length fill1 in
   let q, capacity = Ke.Rke.Weighted.create ~capacity Bigarray.Char in
   match Ke.Rke.Weighted.N.push q ~blit:blit_from_string ~length:String.length fill0 with
   | Some [ fill0' ] ->
@@ -266,4 +267,3 @@ let compress_and_push =
     if String.length fill0 <= capacity
     then failf "push fails for unknow reason"
     else bad_test ()
-
