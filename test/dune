@@ -1,6 +1,6 @@
 (executable
  (name test)
- (libraries alcotest ke))
+ (libraries bigstringaf alcotest ke))
 
 (alias
  (name runtest)

@@ -1,5 +1,11 @@
 let () = Printexc.record_backtrace true
 
+module Option = struct
+  let map f = function
+    | Some x -> Some (f x)
+    | None -> None
+end
+
 module type Q = sig
   type t
 
@@ -19,6 +25,7 @@ module type Q = sig
   val compress : t -> unit
 end
 
+(* XXX(dinosaure): from [ocaml]. *)
 module Make (Q : Q) = struct
   let to_list q = Q.fold (fun a x -> x :: a) [] q |> List.rev
 
@@ -208,22 +215,67 @@ module Test_weighted_rke = Make (struct
     let compress = Ke.Rke.Weighted.compress
   end)
 
+module Test_blit = struct
+  module Q = Ke.Rke.Weighted
+
+  let blit_to_bytes src src_off dst dst_off len =
+    Bigstringaf.blit_to_bytes src ~src_off dst ~dst_off ~len
+  let blit_of_string src src_off dst dst_off len =
+    Bigstringaf.blit_from_string src ~src_off dst ~dst_off ~len
+  let blit_of_bytes src src_off dst dst_off len =
+    Bigstringaf.blit_from_bytes src ~src_off dst ~dst_off ~len
+
+  let test_0 =
+    Alcotest.test_case "peek/keep" `Quick @@ fun () ->
+    let q, _ = Q.create ~capacity:0x100 Bigarray.Char in
+    let _ = Q.N.push_exn q ~blit:blit_of_string ~length:String.length "deadbeef" in
+    let res = Q.N.peek q in
+    Alcotest.(check (list string)) "peek:deadbeef" [ "deadbeef" ] (List.map Bigstringaf.to_string res) ;
+    let tmp = Bytes.create (String.length "deadbeef") in
+    let _ = Q.N.keep_exn q ~blit:blit_to_bytes ~length:Bytes.length tmp in
+    Alcotest.(check string) "keep:deadbeef" "deadbeef" (Bytes.unsafe_to_string tmp)
+
+  let test_1 =
+    Alcotest.test_case "shift" `Quick @@ fun () ->
+    let q, _ = Q.create ~capacity:0x100 Bigarray.Char in
+    let _ = Q.N.push_exn q ~blit:blit_of_string ~length:String.length "deadbeef" in
+    Q.N.shift_exn q (String.length "deadbeef") ;
+    let res = Q.N.peek q in
+    Alcotest.(check (list string)) "peek:empty" [ ] (List.map Bigstringaf.to_string res)
+
+  let test_2 =
+    Alcotest.test_case "push" `Quick @@ fun () ->
+    let q, capacity = Q.create ~capacity:0x10 Bigarray.Char in
+    match Q.N.push q ~blit:blit_of_string ~length:String.length (String.make capacity '\000') with
+    | Some res ->
+      Alcotest.(check (list string)) "push:0x00" [ String.make capacity '\000' ] (List.map Bigstringaf.to_string res) ;
+      let res = Q.N.push q ~blit:blit_of_string ~length:String.length "\x42" in
+      Alcotest.(check (option (list string)))
+        "push:0x42" None (Option.map (List.map Bigstringaf.to_string) res)
+    | None -> Alcotest.failf "Impossible to push %S" (String.make capacity '\000')
+end
+
 let () = Alcotest.run "ke"
-    [ "rke", [ Test_rke.test_0
-             ; Test_rke.test_1
-             ; Test_rke.test_2
-             ; Test_rke.test_3
-             ; Test_rke.test_4
-             ; Test_rke.test_5
-             ; Test_rke.test_6
-             ; Test_rke.test_7
-             ; Test_rke.test_8 ]
-    ; "rke:weighted", [ Test_weighted_rke.test_0
-                      ; Test_weighted_rke.test_1
-                      ; Test_weighted_rke.test_2
-                      ; Test_weighted_rke.test_3
-                      ; Test_weighted_rke.test_4
-                      ; Test_weighted_rke.test_5
-                      ; Test_weighted_rke.test_6
-                      ; Test_weighted_rke.test_7
-                      ; Test_weighted_rke.test_8 ] ]
+    [ "rke",
+      [ Test_rke.test_0
+      ; Test_rke.test_1
+      ; Test_rke.test_2
+      ; Test_rke.test_3
+      ; Test_rke.test_4
+      ; Test_rke.test_5
+      ; Test_rke.test_6
+      ; Test_rke.test_7
+      ; Test_rke.test_8 ]
+    ; "rke:weighted",
+      [ Test_weighted_rke.test_0
+      ; Test_weighted_rke.test_1
+      ; Test_weighted_rke.test_2
+      ; Test_weighted_rke.test_3
+      ; Test_weighted_rke.test_4
+      ; Test_weighted_rke.test_5
+      ; Test_weighted_rke.test_6
+      ; Test_weighted_rke.test_7
+      ; Test_weighted_rke.test_8
+      ; Test_blit.test_0
+      ; Test_blit.test_1
+      ; Test_blit.test_2 ] ]
