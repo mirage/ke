@@ -1,3 +1,12 @@
+v0.3 2019-04-10 Paris (France)
+------------------------------
+
+* Add `Rke.{,Weighted}.compress` function (fuzzed)
+* Update `bechamel` benchmark
+* Add `Rke{,.Weighted}.N.peek` function
+* Fix bug on `Rke.Weighted.N.keep` function
+* Add some tests
+
 v0.2 2019-01-14 Paris (France)
 ------------------------------
 
