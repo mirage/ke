@@ -11,7 +11,7 @@ synopsis:     "Queue implementation"
 description:  """Queue implementation in OCaml (functional and imperative queue)"""
 
 build: [
-  [ "dune" "subst" ]
+  [ "dune" "subst" ] {pinned}
   [ "dune" "build" "-p" name "-j" jobs ]
   [ "dune" "runtest" "-p" name "-j" jobs ] {with-test}
 ]
