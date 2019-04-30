@@ -1,5 +1,4 @@
-v0.3 2019-04-10 Paris (France)
-------------------------------
+### v0.3 2019-04-10 Paris (France)
 
 * Add `Rke.{,Weighted}.compress` function (fuzzed)
 * Update `bechamel` benchmark
@@ -7,8 +6,7 @@ v0.3 2019-04-10 Paris (France)
 * Fix bug on `Rke.Weighted.N.keep` function
 * Add some tests
 
-v0.2 2019-01-14 Paris (France)
-------------------------------
+### v0.2 2019-01-14 Paris (France)
 
 * Add pretty-printer
 * Randomize `pop` action on the fuzzer
@@ -18,7 +16,6 @@ v0.2 2019-01-14 Paris (France)
 * Fix bug on `Rke.N.keep_exn` (see 3951501)
 * Add Travis CI support
 
-v0.1 2018-12-20 Paris (France)
-------------------------------
+### v0.1 2018-12-20 Paris (France)
 
 * First release
