@@ -99,7 +99,7 @@ module type R = sig
 
   val compress : ('a, 'b) t -> unit
   (** Compress queue, read cursor will be setted to [0] and data will be move
-     to. This operation permits to provide much more space for a
+     to. This operation allows to provide much more space for a
      {!push}/{!N.push} operation - but it can not ensure enough free space. *)
 
   module N : sig
@@ -249,7 +249,7 @@ module Weighted = struct
 
     val compress : ('a, 'b) t -> unit
     (** Compress queue, read cursor will be setted to [0] and data will be move
-       to. This operation permits to provide much more space for a
+       to. This operation allows to provide much more space for a
        {!push}/{!N.push} operation - but it can not ensure enough free space. *)
 
     module N : sig
