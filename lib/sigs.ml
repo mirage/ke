@@ -33,6 +33,9 @@ module type F = sig
   val pop_exn : 'a t -> 'a * 'a t
   (** Same as {!pop} but it raises an exception if [q] is empty. *)
 
+  val tail : 'a t -> ('a t * 'a) option
+  val tail_exn : 'a t -> 'a t * 'a
+
   val iter : ('a -> unit) -> 'a t -> unit
   (** [iter f q] applies [f] in turn to all elements of [q], from the least
      recently entered to the most recently entered. The queue itself is

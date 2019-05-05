@@ -64,6 +64,23 @@ let rec pop_exn : type a. a t -> a * a t =
   | Deep {s; f= Two (x, y); m; r} -> (x, _deep (s - 1) (One y) m r)
   | Deep {s; f= Three (x, y, z); m; r} -> (x, _deep (s - 1) (Two (y, z)) m r)
 
+let rec tail_exn : type a. a t -> a t * a =
+  fun q -> match q with
+    | Shallow Zero -> raise Empty
+    | Shallow (One x) -> empty, x
+    | Shallow (Two (x, y)) -> _one x, y
+    | Shallow (Three (x, y, z)) -> _two x y, z
+    | Deep { s; f; m= (lazy q'); r= One x } ->
+      if is_empty q'
+      then (Shallow f, x)
+      else
+        let q'', (y, z) = tail_exn q' in
+        (_deep (s - 1) f (Lazy.from_val q'') (Two (y, z)), x)
+    | Deep { s; f; m; r= Two (x, y); } ->
+      (_deep (s - 1) f m (One x), y)
+    | Deep { s; f; m; r= Three (x, y, z); } ->
+      (_deep (s - 1) f m (Two (x, y)), z)
+
 let peek_exn : type a. a t -> a =
  fun q ->
   match q with
@@ -76,6 +93,7 @@ let peek_exn : type a. a t -> a =
   | Deep {f= Three (x, _, _); _} -> x
 
 let pop q = try Some (pop_exn q) with Empty -> None
+let tail q = try Some (tail_exn q) with Empty -> None
 let peek q = try Some (peek_exn q) with Empty -> None
 
 let rec cons : type a. a t -> a -> a t =
