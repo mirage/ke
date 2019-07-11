@@ -20,6 +20,7 @@ depends: [
   "ocaml"      {>= "4.03.0"}
   "dune"       {build}
   "fmt"
+  "bigarray-compat"
   "alcotest" {with-test}
   "bigstringaf" {with-test}
 ]
