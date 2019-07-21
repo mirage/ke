@@ -124,6 +124,21 @@ let iter : type a. (a -> unit) -> a t -> unit =
   in
   go f q
 
+let rev_iter : type a. (a -> unit) -> a t -> unit =
+  fun f q ->
+   let rec go : type a. (a -> unit) -> a t -> unit =
+    fun f -> function
+     | Shallow Zero -> ()
+     | Shallow (One x) -> f x
+     | Shallow (Two (y, x)) -> f x; f y
+     | Shallow (Three (z, y, x)) -> f x ; f y ; f z
+     | Deep {f= hd; m= (lazy q); r= tl; _} ->
+         go f (Shallow tl) ;
+         go (fun (y, x) -> f x; f y) q ;
+         go f (Shallow hd)
+   in
+   go f q
+
 let fold : type acc x. (acc -> x -> acc) -> acc -> x t -> acc =
  fun f a q ->
   let rec go : type acc x. (acc -> x -> acc) -> acc -> x t -> acc =

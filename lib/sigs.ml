@@ -41,6 +41,8 @@ module type F = sig
      recently entered to the most recently entered. The queue itself is
      unchanged. *)
 
+  val rev_iter : ('a -> unit) -> 'a t -> unit
+
   val fold : ('acc -> 'x -> 'acc) -> 'acc -> 'x t -> 'acc
   (** [fold f a q] is equivalent to [List.fold_left f a l], where [l] is the
      list of [q]'s elements. The queue remains unchanged. *)
