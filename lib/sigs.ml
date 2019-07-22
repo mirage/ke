@@ -34,7 +34,10 @@ module type F = sig
   (** Same as {!pop} but it raises an exception if [q] is empty. *)
 
   val tail : 'a t -> ('a t * 'a) option
+  (** Get and remove the {b last} element. If [q] is empty, it returns [None]. *)
+
   val tail_exn : 'a t -> 'a t * 'a
+  (** Same as {!tail} but it raises an exception if [q] is empty. *)
 
   val iter : ('a -> unit) -> 'a t -> unit
   (** [iter f q] applies [f] in turn to all elements of [q], from the least
@@ -42,6 +45,9 @@ module type F = sig
      unchanged. *)
 
   val rev_iter : ('a -> unit) -> 'a t -> unit
+  (** [rev_iter f q] applies [f] in turn to all elements of [q], from the most
+     recently entered to the least recently entered. The queue itself is
+     unchanged. *)
 
   val fold : ('acc -> 'x -> 'acc) -> 'acc -> 'x t -> 'acc
   (** [fold f a q] is equivalent to [List.fold_left f a l], where [l] is the
