@@ -1,3 +1,15 @@
+### v0.4 2019-07-24 Мостар (Боснa и Херцеговина)
+
+* Call `dune subst` only when we _pin_ `ke`
+* Update documentation (@dinosaure, @Drup)
+  - Typography
+  - Documentation about `Fke.tail{,_exn}`
+  - Documentation about `Fke.rev_iter`
+* Add `Fke.tail{,_exn}` (@dinosaure, #8)
+* Add `Fke.rev_iter` (@dinosaure, #9)
+* Compatible with `mirage`, dependance with `bigarray-compat` (@dinosaure, @TheLortex, #8)
+* Update OPAM file (@dinosaure)
+
 ### v0.3 2019-04-10 Paris (France)
 
 * Add `Rke.{,Weighted}.compress` function (fuzzed)
