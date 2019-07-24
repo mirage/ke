@@ -10,11 +10,8 @@ license:      "MIT"
 synopsis:     "Queue implementation"
 description:  """Queue implementation in OCaml (functional and imperative queue)"""
 
-build: [
-  [ "dune" "subst" ] {pinned}
-  [ "dune" "build" "-p" name "-j" jobs ]
-  [ "dune" "runtest" "-p" name "-j" jobs ] {with-test}
-]
+build: [ "dune" "build" "-p" name "-j" jobs ]
+runtest: [ "dune" "runtest" "-p" name "-j" jobs ]
 
 depends: [
   "ocaml"      {>= "4.03.0"}
