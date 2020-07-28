@@ -361,6 +361,8 @@ module Weighted = struct
     (** Human-readable pretty-printer of {!t}. *)
 
     (** / **)
+    val unsafe_bigarray :
+      ('a, 'b) t -> ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
 
     val from : ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t -> ('a, 'b) t
   end

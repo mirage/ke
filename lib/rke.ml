@@ -390,4 +390,6 @@ module Weighted = struct
   let clear q =
     q.r <- 0 ;
     q.w <- 0
+
+  let unsafe_bigarray {v; _} = v
 end
