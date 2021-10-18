@@ -1,9 +1,9 @@
 module type F = sig
-  (** The type of queues containing elements of type ['a]. *)
   type 'a t
+  (** The type of queues containing elements of type ['a]. *)
 
-  (** Raised when {!peek_exn} or {!pop_exn} is applied to an empty queue. *)
   exception Empty
+  (** Raised when {!peek_exn} or {!pop_exn} is applied to an empty queue. *)
 
   val empty : 'a t
   (** An empty queue. *)
@@ -61,12 +61,12 @@ module type F = sig
 end
 
 module type R = sig
-  (** The type of queues containing elements of type ['a]. *)
   type ('a, 'b) t
+  (** The type of queues containing elements of type ['a]. *)
 
+  exception Empty
   (** Raised when {!peek_exn}, {!pop_exn}, {!N.keep_exn} or {!N.shift_exn} is
      applied to an empty queue. *)
-  exception Empty
 
   val is_empty : ('a, 'b) t -> bool
   (** Return [true] if the given queue is empty, [false] otherwise. *)
@@ -114,35 +114,36 @@ module type R = sig
      {!push}/{!N.push} operation - but it can not ensure enough free space. *)
 
   module N : sig
+    type ('a, 'b) bigarray =
+      ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
     (** The type of the internal bigarray of {!t}. *)
-    type ('a, 'b) bigarray = ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
 
-    (** The type of the [blit] function. *)
     type ('a, 'b) blit = 'a -> int -> 'b -> int -> int -> unit
+    (** The type of the [blit] function. *)
 
-    (** The type of the [length] function. *)
     type 'a length = 'a -> int
+    (** The type of the [length] function. *)
 
     val push :
-         ('a, 'b) t
-      -> blit:('src, ('a, 'b) bigarray) blit
-      -> length:'src length
-      -> ?off:int
-      -> ?len:int
-      -> 'src
-      -> unit
+      ('a, 'b) t ->
+      blit:('src, ('a, 'b) bigarray) blit ->
+      length:'src length ->
+      ?off:int ->
+      ?len:int ->
+      'src ->
+      unit
     (** [push q ~blit ~length ?off ?len src] {i blits} elements in [src] to the
        given queue [q] at the end (like a fast iterative {!R.push}). Default
        value of [off] is [0]. Default value of [len] is [length src - off]. *)
 
     val keep_exn :
-         ('a, 'b) t
-      -> blit:(('a, 'b) bigarray, 'dst) blit
-      -> length:'dst length
-      -> ?off:int
-      -> ?len:int
-      -> 'dst
-      -> unit
+      ('a, 'b) t ->
+      blit:(('a, 'b) bigarray, 'dst) blit ->
+      length:'dst length ->
+      ?off:int ->
+      ?len:int ->
+      'dst ->
+      unit
     (** [keep_exn q ~blit ~length ?off ?len dst] {i blits} elements of the given
        queue [q] in [dst] from the front to the end of [dst] (like a fast
        iterative {!R.pop_exn}). Default value of [off] is [0]. Default value of
@@ -151,16 +152,18 @@ module type R = sig
        unchanged. *)
 
     val keep :
-         ('a, 'b) t
-      -> blit:(('a, 'b) bigarray, 'dst) blit
-      -> length:'dst length
-      -> ?off:int
-      -> ?len:int
-      -> 'dst
-      -> unit option
+      ('a, 'b) t ->
+      blit:(('a, 'b) bigarray, 'dst) blit ->
+      length:'dst length ->
+      ?off:int ->
+      ?len:int ->
+      'dst ->
+      unit option
     (** Same as {!keep_exn} but if it fails, it returns [None]. *)
 
-    val peek : ('a, 'b) t -> ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t list
+    val peek :
+      ('a, 'b) t ->
+      ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t list
     (** Returns a sub-part of available to read payloads. *)
 
     val unsafe_shift : ('a, 'b) t -> int -> unit
@@ -200,19 +203,20 @@ end
 
 module Weighted = struct
   module type R = sig
-    (** The type of queues containing elements of type ['a]. *)
     type ('a, 'b) t
+    (** The type of queues containing elements of type ['a]. *)
 
-    (** Raised when {!push_exn} or {!N.push_exn} is applied to an empty queue. *)
     exception Full
+    (** Raised when {!push_exn} or {!N.push_exn} is applied to an empty queue. *)
 
-    (** Raised when {!peek_exn}, {!pop_exn} is applied to an empty queue. *)
     exception Empty
+    (** Raised when {!peek_exn}, {!pop_exn} is applied to an empty queue. *)
 
     val is_empty : ('a, 'b) t -> bool
     (** Return [true] if the given queue is empty, [false] otherwise. *)
 
-    val create : ?capacity:int -> ('a, 'b) Bigarray_compat.kind -> ('a, 'b) t * int
+    val create :
+      ?capacity:int -> ('a, 'b) Bigarray_compat.kind -> ('a, 'b) t * int
     (** Return a new queue, initially empty with the real capacity of it. *)
 
     val length : ('a, 'b) t -> int
@@ -264,23 +268,24 @@ module Weighted = struct
        {!push}/{!N.push} operation - but it can not ensure enough free space. *)
 
     module N : sig
+      type ('a, 'b) bigarray =
+        ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
       (** The type of the internal bigarray of {!t}. *)
-      type ('a, 'b) bigarray = ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
 
-      (** The type of the [blit] function. *)
       type ('a, 'b) blit = 'a -> int -> 'b -> int -> int -> unit
+      (** The type of the [blit] function. *)
 
-      (** The type of the [length] function. *)
       type 'a length = 'a -> int
+      (** The type of the [length] function. *)
 
       val push_exn :
-           ('a, 'b) t
-        -> blit:('src, ('a, 'b) bigarray) blit
-        -> length:'src length
-        -> ?off:int
-        -> ?len:int
-        -> 'src
-        -> ('a, 'b) bigarray list
+        ('a, 'b) t ->
+        blit:('src, ('a, 'b) bigarray) blit ->
+        length:'src length ->
+        ?off:int ->
+        ?len:int ->
+        'src ->
+        ('a, 'b) bigarray list
       (** [push_exn q ~blit ~length ?off ?len src] {i blits} elements in [src]
          to the given queue [q] at the end (like a fast iterative {!R.push}).
          Default value of [off] is [0]. Default value of [len] is [length src - off].
@@ -289,23 +294,23 @@ module Weighted = struct
          raises {!Full} and the given queue is unchanged. *)
 
       val push :
-           ('a, 'b) t
-        -> blit:('src, ('a, 'b) bigarray) blit
-        -> length:'src length
-        -> ?off:int
-        -> ?len:int
-        -> 'src
-        -> ('a, 'b) bigarray list option
+        ('a, 'b) t ->
+        blit:('src, ('a, 'b) bigarray) blit ->
+        length:'src length ->
+        ?off:int ->
+        ?len:int ->
+        'src ->
+        ('a, 'b) bigarray list option
       (** Same as {!push_exn} but it returns [None] if it fails. *)
 
       val keep_exn :
-           ('a, 'b) t
-        -> blit:(('a, 'b) bigarray, 'dst) blit
-        -> length:'dst length
-        -> ?off:int
-        -> ?len:int
-        -> 'dst
-        -> unit
+        ('a, 'b) t ->
+        blit:(('a, 'b) bigarray, 'dst) blit ->
+        length:'dst length ->
+        ?off:int ->
+        ?len:int ->
+        'dst ->
+        unit
       (** [keep_exn q ~blit ~length ?off ?len dst] {i blits} elements of the
          given queue [q] in [dst] from the front to the end of [dst] (like a
          fast iterative {!R.pop_exn}). Default value of [off] is [0]. Default
@@ -314,16 +319,18 @@ module Weighted = struct
          given queue is unchanged. *)
 
       val keep :
-           ('a, 'b) t
-        -> blit:(('a, 'b) bigarray, 'dst) blit
-        -> length:'dst length
-        -> ?off:int
-        -> ?len:int
-        -> 'dst
-        -> unit option
+        ('a, 'b) t ->
+        blit:(('a, 'b) bigarray, 'dst) blit ->
+        length:'dst length ->
+        ?off:int ->
+        ?len:int ->
+        'dst ->
+        unit option
       (** Same as {!keep_exn} but if it fails, it returns [None]. *)
 
-      val peek : ('a, 'b) t -> ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t list
+      val peek :
+        ('a, 'b) t ->
+        ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t list
       (** Returns a sub-part of available to read payloads. *)
 
       val unsafe_shift : ('a, 'b) t -> int -> unit
@@ -360,27 +367,29 @@ module Weighted = struct
     val dump : 'a Fmt.t -> ('a, 'b) t Fmt.t
     (** Human-readable pretty-printer of {!t}. *)
 
-    (** / **)
     val unsafe_bigarray :
       ('a, 'b) t -> ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
+    (** / **)
 
-    val from : ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t -> ('a, 'b) t
+    val from :
+      ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t -> ('a, 'b) t
   end
 
   module type F = sig
-    (** The type of queues containing elements of type ['a]. *)
     type ('a, 'b) t
+    (** The type of queues containing elements of type ['a]. *)
 
-    (** Raised when {!push_exn} or {!N.push_exn} is applied to an empty queue. *)
     exception Empty
+    (** Raised when {!push_exn} or {!N.push_exn} is applied to an empty queue. *)
 
-    (** Raised when {!peek_exn}, {!pop_exn} is applied to an empty queue. *)
     exception Full
+    (** Raised when {!peek_exn}, {!pop_exn} is applied to an empty queue. *)
 
     val is_empty : ('a, 'b) t -> bool
     (** Return [true] if the given queue is empty, [false] otherwise. *)
 
-    val create : ?capacity:int -> ('a, 'b) Bigarray_compat.kind -> ('a, 'b) t * int
+    val create :
+      ?capacity:int -> ('a, 'b) Bigarray_compat.kind -> ('a, 'b) t * int
     (** Return a new queue, initially empty with the real capacity of it. *)
 
     val length : ('a, 'b) t -> int
@@ -428,23 +437,24 @@ module Weighted = struct
     (** Discard all elements from a queue. *)
 
     module N : sig
+      type ('a, 'b) bigarray =
+        ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
       (** The type of the internal bigarray of {!t}. *)
-      type ('a, 'b) bigarray = ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
 
-      (** The type of the [blit] function. *)
       type ('a, 'b) blit = 'a -> int -> 'b -> int -> int -> unit
+      (** The type of the [blit] function. *)
 
-      (** The type of the [length] function. *)
       type 'a length = 'a -> int
+      (** The type of the [length] function. *)
 
       val push_exn :
-           ('a, 'b) t
-        -> blit:('src, ('a, 'b) bigarray) blit
-        -> length:'src length
-        -> ?off:int
-        -> ?len:int
-        -> 'src
-        -> ('a, 'b) bigarray list * ('a, 'b) t
+        ('a, 'b) t ->
+        blit:('src, ('a, 'b) bigarray) blit ->
+        length:'src length ->
+        ?off:int ->
+        ?len:int ->
+        'src ->
+        ('a, 'b) bigarray list * ('a, 'b) t
       (** [push_exn q ~blit ~length ?off ?len src] {i blits} elements in [src]
          to the given queue [q] at the end (like a fast iterative {!R.push}).
          Default value of [off] is [0]. Default value of [len] is [length src - off].
@@ -453,23 +463,23 @@ module Weighted = struct
          raises {!Full} and the given queue is unchanged. *)
 
       val push :
-           ('a, 'b) t
-        -> blit:('src, ('a, 'b) bigarray) blit
-        -> length:'src length
-        -> ?off:int
-        -> ?len:int
-        -> 'src
-        -> (('a, 'b) bigarray list * ('a, 'b) t) option
+        ('a, 'b) t ->
+        blit:('src, ('a, 'b) bigarray) blit ->
+        length:'src length ->
+        ?off:int ->
+        ?len:int ->
+        'src ->
+        (('a, 'b) bigarray list * ('a, 'b) t) option
       (** Same as {!push_exn} but it returns [None] if it fails. *)
 
       val keep_exn :
-           ('a, 'b) t
-        -> blit:(('a, 'b) bigarray, 'dst) blit
-        -> length:'dst length
-        -> ?off:int
-        -> ?len:int
-        -> 'dst
-        -> unit
+        ('a, 'b) t ->
+        blit:(('a, 'b) bigarray, 'dst) blit ->
+        length:'dst length ->
+        ?off:int ->
+        ?len:int ->
+        'dst ->
+        unit
       (** [keep_exn q ~blit ~length ?off ?len dst] {i blits} elements of the
          given queue [q] in [dst] from the front to the end of [dst] (like a
          fast iterative {!R.pop_exn}). Default value of [off] is [0]. Default
@@ -478,13 +488,13 @@ module Weighted = struct
          given queue is unchanged. *)
 
       val keep :
-           ('a, 'b) t
-        -> blit:(('a, 'b) bigarray, 'dst) blit
-        -> length:'dst length
-        -> ?off:int
-        -> ?len:int
-        -> 'dst
-        -> unit option
+        ('a, 'b) t ->
+        blit:(('a, 'b) bigarray, 'dst) blit ->
+        length:'dst length ->
+        ?off:int ->
+        ?len:int ->
+        'dst ->
+        unit option
       (** Same as {!keep_exn} but if it fails, it returns [None]. *)
 
       val unsafe_shift : ('a, 'b) t -> int -> ('a, 'b) t
@@ -526,6 +536,7 @@ module Weighted = struct
     val unsafe_bigarray :
       ('a, 'b) t -> ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
 
-    val from : ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t -> ('a, 'b) t
+    val from :
+      ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t -> ('a, 'b) t
   end
 end

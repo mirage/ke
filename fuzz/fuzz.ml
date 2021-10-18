@@ -80,7 +80,7 @@ module Stack = struct
 
   let rec length : type a l. (a, l) action -> l Value.value = function
     | Empty -> Value.Zero
-    | Pop a -> ( match length a with Value.Succ x -> x )
+    | Pop a -> ( match length a with Value.Succ x -> x)
     | Push (_, a) -> Value.Succ (length a)
 
   let is_empty : type l. ('a, l) action -> (l, Peano.zero) Refl.t option =
@@ -88,9 +88,9 @@ module Stack = struct
     | Empty -> Some Refl.Refl
     | Push _ -> None
     | Pop a -> (
-      match length a with
-      | Value.Succ Value.Zero -> Some Refl.Refl
-      | Value.Succ _ -> None )
+        match length a with
+        | Value.Succ Value.Zero -> Some Refl.Refl
+        | Value.Succ _ -> None)
 
   type 'a is_not_empty =
     | Is_not_empty : ('a, _ Peano.succ) Refl.t -> 'a is_not_empty
@@ -99,32 +99,32 @@ module Stack = struct
     | Empty -> None
     | Push _ -> Some (Is_not_empty Refl.Refl)
     | Pop a -> (
-      match length a with
-      | Value.Succ Value.Zero -> None
-      | Value.Succ (Value.Succ _) -> Some (Is_not_empty Refl.Refl) )
+        match length a with
+        | Value.Succ Value.Zero -> None
+        | Value.Succ (Value.Succ _) -> Some (Is_not_empty Refl.Refl))
 end
 
 open Crowbar
 
 type tree = Tree of Value.t * tree list * bool
 
-let rec list_of_tree (Tree (v, x, pop)) : [`Push of Value.t | `Pop] list =
-  if pop
-  then [`Push v] @ List.concat (List.map list_of_tree x) @ [`Pop]
-  else [`Push v] @ List.concat (List.map list_of_tree x)
+let rec list_of_tree (Tree (v, x, pop)) : [ `Push of Value.t | `Pop ] list =
+  if pop then [ `Push v ] @ List.concat (List.map list_of_tree x) @ [ `Pop ]
+  else [ `Push v ] @ List.concat (List.map list_of_tree x)
 
 let generate : tree gen =
-  let value = map [range 30] Value.of_int in
-  fix @@ fun m -> map [value; list m; bool] (fun v l pop -> Tree (v, l, pop))
+  let value = map [ range 30 ] Value.of_int in
+  fix @@ fun m -> map [ value; list m; bool ] (fun v l pop -> Tree (v, l, pop))
 
 let action_of_tree tree : Value.t Stack.t =
   let lst = list_of_tree tree in
   List.fold_left
-    (fun (Stack.V acc) -> function `Push v -> Stack.(V (Push (v, acc)))
+    (fun (Stack.V acc) -> function
+      | `Push v -> Stack.(V (Push (v, acc)))
       | `Pop -> (
-        match Stack.is_not_empty acc with
-        | Some (Stack.Is_not_empty Refl.Refl) -> Stack.V (Stack.Pop acc)
-        | None -> bad_test () ) )
+          match Stack.is_not_empty acc with
+          | Some (Stack.Is_not_empty Refl.Refl) -> Stack.V (Stack.Pop acc)
+          | None -> bad_test ()))
     Stack.(V Empty)
     lst
 
@@ -139,11 +139,10 @@ module Compare = struct
       Ke.Fke.iter
         (fun x ->
           let x' = Queue.pop q' in
-          if x <> x' then raise Not_equal )
-        fke ;
+          if x <> x' then raise Not_equal)
+        fke;
       true
-    with
-    | Not_equal | Queue.Empty -> false
+    with Not_equal | Queue.Empty -> false
 
   let rke q rke =
     let q' = Queue.copy q in
@@ -151,25 +150,24 @@ module Compare = struct
       Ke.Rke.iter
         (fun x ->
           let x' = Queue.pop q' in
-          if x <> x' then raise Not_equal )
-        rke ;
+          if x <> x' then raise Not_equal)
+        rke;
       true
-    with
-    | Not_equal | Queue.Empty -> false
+    with Not_equal | Queue.Empty -> false
 end
 
 let iter iter pp_name pp_elt ppf v =
   let is_first = ref true in
   let pp_elt v =
-    if !is_first then is_first := false else Fmt.pf ppf "@ " ;
+    if !is_first then is_first := false else Fmt.pf ppf "@ ";
     Fmt.pf ppf "@[%a@]" pp_elt v
   in
-  Fmt.pf ppf "@[<1>(%a@ " pp_name v ;
-  iter pp_elt v ;
+  Fmt.pf ppf "@[<1>(%a@ " pp_name v;
+  iter pp_elt v;
   Fmt.pf ppf ")@]"
 
-let pp_fke pp_elt = iter Ke.Fke.iter (Fmt.always "fke") pp_elt
-let pp_rke pp_elt = iter Ke.Rke.iter (Fmt.always "rke") pp_elt
+let pp_fke pp_elt = iter Ke.Fke.iter (Fmt.any "fke") pp_elt
+let pp_rke pp_elt = iter Ke.Rke.iter (Fmt.any "rke") pp_elt
 
 let rke_of_action a =
   let q =
@@ -178,62 +176,62 @@ let rke_of_action a =
   let rec go : type l. (Value.t, l) Stack.action -> unit = function
     | Stack.Empty -> ()
     | Stack.Push (Value.V v, a) ->
-        go a ;
+        go a;
         Ke.Rke.push q (Value.to_int v)
     | Stack.Pop a ->
-        go a ;
+        go a;
         ignore @@ Ke.Rke.pop_exn q
   in
-  go a ; q
+  go a;
+  q
 
 let queue_of_action a =
   let q = Queue.create () in
   let rec go : type l. (Value.t, l) Stack.action -> unit = function
     | Stack.Empty -> ()
     | Stack.Push (Value.V v, a) ->
-        go a ;
+        go a;
         Queue.push (Value.to_int v) q
     | Stack.Pop a ->
-        go a ;
+        go a;
         ignore @@ Queue.pop q
   in
-  go a ; q
+  go a;
+  q
 
 let fke_of_action a =
-  let rec go : type l. (int Ke.Fke.t -> 'r) -> (Value.t, l) Stack.action -> 'r
-      =
+  let rec go : type l. (int Ke.Fke.t -> 'r) -> (Value.t, l) Stack.action -> 'r =
    fun k -> function
     | Stack.Empty -> k Ke.Fke.empty
     | Stack.Push (Value.V v, a) ->
         go
           (fun q ->
             let q = Ke.Fke.push q (Value.to_int v) in
-            k q )
+            k q)
           a
     | Stack.Pop a ->
         go
           (fun q ->
             let _, q = Ke.Fke.pop_exn q in
-            k q )
+            k q)
           a
   in
   go identity a
 
 let () =
-  add_test ~name:"queue" [map [generate] action_of_tree]
+  add_test ~name:"queue" [ map [ generate ] action_of_tree ]
   @@ fun (Stack.V a) ->
   let fke = fke_of_action a in
   let rke = rke_of_action a in
   let queue = queue_of_action a in
   if not (Compare.fke queue fke) then
-    failf "%a <> %a" Fmt.(Dump.queue int) queue (pp_fke Fmt.int) fke ;
+    failf "%a <> %a" Fmt.(Dump.queue int) queue (pp_fke Fmt.int) fke;
   if not (Compare.rke queue rke) then
-    failf "%a <> %a" Fmt.(Dump.queue int) queue (pp_rke Fmt.int) rke ;
+    failf "%a <> %a" Fmt.(Dump.queue int) queue (pp_rke Fmt.int) rke;
   ()
 
 let ( >>= ) = dynamic_bind
-
-let failf fmt = Fmt.kstrf fail fmt
+let failf fmt = Fmt.kstr fail fmt
 
 let blit src src_off dst dst_off len =
   let a = Bigarray.Array1.sub src src_off len in
@@ -244,26 +242,37 @@ let blit_from_string src src_off dst dst_off len =
   Bigstringaf.blit_from_string src ~src_off dst ~dst_off ~len
 
 let () =
-  add_test ~name:"compress-and-push" [ range 0x100 >>= bytes_fixed; range 0x100 >>= bytes_fixed ] @@ fun fill0 fill1 ->
+  add_test ~name:"compress-and-push"
+    [ range 0x100 >>= bytes_fixed; range 0x100 >>= bytes_fixed ]
+  @@ fun fill0 fill1 ->
   let capacity = String.length fill0 + String.length fill1 in
   let q, capacity = Ke.Rke.Weighted.create ~capacity Bigarray.Char in
-  match Ke.Rke.Weighted.N.push q ~blit:blit_from_string ~length:String.length fill0 with
-  | Some [ fill0' ] ->
-    let fill0' = Bigstringaf.create (Bigstringaf.length fill0') in
-    Ke.Rke.Weighted.compress q ;
-    Ke.Rke.Weighted.N.keep_exn q ~blit ~length:Bigstringaf.length fill0' ;
-    (match Ke.Rke.Weighted.N.push q ~blit:blit_from_string ~length:String.length fill1 with
-     | Some [ fill1' ] ->
-       let a = Bigstringaf.memcmp_string fill0' 0 fill0 0 (String.length fill0) in
-       let b = Bigstringaf.memcmp_string fill1' 0 fill1 0 (String.length fill1) in
-       if a <> 0 || b <> 0 then failf "Queue differs from inputs"
-     | Some _ -> failf "push returns multiple payloads"
-     | None ->
-       if String.length fill0 + String.length fill1 <= capacity
-       then failf "push fails for unknow reason"
-       else bad_test ())
+  match
+    Ke.Rke.Weighted.N.push q ~blit:blit_from_string ~length:String.length fill0
+  with
+  | Some [ fill0' ] -> (
+      let fill0' = Bigstringaf.create (Bigstringaf.length fill0') in
+      Ke.Rke.Weighted.compress q;
+      Ke.Rke.Weighted.N.keep_exn q ~blit ~length:Bigstringaf.length fill0';
+      match
+        Ke.Rke.Weighted.N.push q ~blit:blit_from_string ~length:String.length
+          fill1
+      with
+      | Some [ fill1' ] ->
+          let a =
+            Bigstringaf.memcmp_string fill0' 0 fill0 0 (String.length fill0)
+          in
+          let b =
+            Bigstringaf.memcmp_string fill1' 0 fill1 0 (String.length fill1)
+          in
+          if a <> 0 || b <> 0 then failf "Queue differs from inputs"
+      | Some _ -> failf "push returns multiple payloads"
+      | None ->
+          if String.length fill0 + String.length fill1 <= capacity then
+            failf "push fails for unknow reason"
+          else bad_test ())
   | Some _ -> failf "push returns multiple payloads."
   | None ->
-    if String.length fill0 <= capacity
-    then failf "push fails for unknow reason"
-    else bad_test ()
+      if String.length fill0 <= capacity then
+        failf "push fails for unknow reason"
+      else bad_test ()
