@@ -16,8 +16,11 @@ run-test: [ "dune" "runtest" "-p" name "-j" jobs ]
 depends: [
   "ocaml"      {>= "4.03.0"}
   "dune"       {>= "1.5"}
-  "fmt"        {>= "0.8.5"}
+  "fmt"        {>= "0.8.7"}
   "bigarray-compat"
   "alcotest" {with-test}
   "bigstringaf" {with-test}
+  "bechamel" {with-test}
+  "ocplib-json-typed" {with-test}
+  "core_bench" {with-test}
 ]
