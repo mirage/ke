@@ -28,19 +28,24 @@ end
 module F (Q : Ke.Sigs.M) (P : F_PROBLEM) = struct
   let search s0 =
     let visited = P.create () in
-    let already s = P.mem visited s || (P.add visited s ; false) in
+    let already s =
+      P.mem visited s
+      ||
+      (P.add visited s;
+       false)
+    in
     let _ = already s0 in
     let q = Q.create () in
-    Q.push q ([], s0) ;
+    Q.push q ([], s0);
     let rec bfs () =
-      if Q.is_empty q then raise Not_found ;
+      if Q.is_empty q then raise Not_found;
       let path, s = Q.pop_exn q in
       if P.success s then (s, List.rev path)
       else (
         List.iter
           (fun (m, s') -> if not (already s') then Q.push q (m :: path, s'))
-          (P.moves s) ;
-        bfs () )
+          (P.moves s);
+        bfs ())
     in
     bfs ()
 end
@@ -57,32 +62,41 @@ module M (Q : Ke.Sigs.M) (P : M_PROBLEM) = struct
     else suffix l1 l2
 
   let search () =
-    let already () = P.mem () || (P.add () ; false) in
+    let already () =
+      P.mem ()
+      ||
+      (P.add ();
+       false)
+    in
     let q = Q.create () in
-    Q.push q (0, []) ;
+    Q.push q (0, []);
     let cpath = ref (0, []) in
     let rec restore_state path =
       let suf = common_psuffix path !cpath in
       let rec backward = function
-        | m :: r as p when p != suf -> P.undo_move m ; backward r
+        | m :: r as p when p != suf ->
+            P.undo_move m;
+            backward r
         | _ -> ()
       in
       let rec forward = function
-        | m :: r as p when p != suf -> forward r ; P.do_move m
+        | m :: r as p when p != suf ->
+            forward r;
+            P.do_move m
         | _ -> ()
       in
-      backward (snd !cpath) ;
-      forward (snd path) ;
+      backward (snd !cpath);
+      forward (snd path);
       cpath := path
     in
     let rec bfs () =
-      if Q.is_empty q then raise Not_found ;
+      if Q.is_empty q then raise Not_found;
       let ((n, path) as s) = Q.pop_exn q in
-      restore_state s ;
+      restore_state s;
       if P.success () then List.rev path
       else if not (already ()) then (
-        List.iter (fun m -> Q.push q (succ n, m :: path)) (P.moves ()) ;
-        bfs () )
+        List.iter (fun m -> Q.push q (succ n, m :: path)) (P.moves ());
+        bfs ())
       else bfs ()
     in
     bfs ()

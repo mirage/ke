@@ -21,8 +21,8 @@ depends: [
   "alcotest" {with-test}
   "bigstringaf" {with-test}
   "bechamel" {with-test}
+  "bechamel-notty" {with-test}
   "ocplib-json-typed" {with-test}
   "core_bench" {with-test}
-  "notty" {with-test}
   "lwt" {with-test}
 ]
