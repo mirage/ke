@@ -22,7 +22,10 @@ depends: [
   "bigstringaf" {with-test}
   "bechamel" {with-test}
   "bechamel-notty" {with-test}
+  "bechamel-perf" {with-test}
   "ocplib-json-typed" {with-test}
   "core_bench" {with-test}
   "lwt" {with-test}
+  "crowbar" {with-test}
+  "rresult" {with-test}
 ]
