@@ -18,14 +18,17 @@ depends: [
   "dune"       {>= "1.5"}
   "fmt"        {>= "0.8.7"}
   "bigarray-compat"
-  "alcotest" {with-test}
-  "bigstringaf" {with-test}
-  "bechamel" {with-test}
-  "bechamel-notty" {with-test}
-  "bechamel-perf" {with-test}
+  "alcotest"          {with-test}
+  "bigstringaf"       {with-test}
+  "bechamel"          {with-test}
+  "bechamel-notty"    {with-test}
+  "bechamel-perf"     {with-test}
   "ocplib-json-typed" {with-test}
-  "core_bench" {with-test}
-  "lwt" {with-test}
-  "crowbar" {with-test}
-  "rresult" {with-test}
+  "core_bench"        {with-test}
+  "lwt"               {with-test}
+  "crowbar"           {with-test}
+  "rresult"           {with-test}
+  "jsonm"             {with-test}
+  "psq"               {with-test}
+  "cmdliner"          {with-test}
 ]
