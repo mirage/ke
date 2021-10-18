@@ -3,7 +3,7 @@ open Core_bench
 
 let random ln =
   let open Stdlib in
-  let open Pervasives in
+  let open Stdlib.Pervasives in
   let ic = open_in "/dev/urandom" in
   let rs = Bytes.create ln in
   really_input ic rs 0 ln ; close_in ic ; Bytes.unsafe_to_string rs

@@ -23,4 +23,6 @@ depends: [
   "bechamel" {with-test}
   "ocplib-json-typed" {with-test}
   "core_bench" {with-test}
+  "notty" {with-test}
+  "lwt" {with-test}
 ]
