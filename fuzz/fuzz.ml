@@ -168,8 +168,8 @@ let iter iter pp_name pp_elt ppf v =
   iter pp_elt v ;
   Fmt.pf ppf ")@]"
 
-let pp_fke pp_elt = iter Ke.Fke.iter (Fmt.always "fke") pp_elt
-let pp_rke pp_elt = iter Ke.Rke.iter (Fmt.always "rke") pp_elt
+let pp_fke pp_elt = iter Ke.Fke.iter (Fmt.any "fke") pp_elt
+let pp_rke pp_elt = iter Ke.Rke.iter (Fmt.any "rke") pp_elt
 
 let rke_of_action a =
   let q =
@@ -233,7 +233,7 @@ let () =
 
 let ( >>= ) = dynamic_bind
 
-let failf fmt = Fmt.kstrf fail fmt
+let failf fmt = Fmt.kstr fail fmt
 
 let blit src src_off dst dst_off len =
   let a = Bigarray.Array1.sub src src_off len in

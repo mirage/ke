@@ -196,7 +196,7 @@ let fold f a t =
   !a
 
 let pp ?sep pp_elt = Fmt.iter ?sep iter pp_elt
-let dump pp_elt = Fmt.Dump.iter iter (Fmt.always "rke") pp_elt
+let dump pp_elt = Fmt.Dump.iter iter (Fmt.any "rke") pp_elt
 
 let clear q =
   q.r <- 0 ;
@@ -385,7 +385,7 @@ module Weighted = struct
     !a
 
   let pp ?sep pp_elt = Fmt.iter ?sep iter pp_elt
-  let dump pp_elt = Fmt.Dump.iter iter (Fmt.always "rke:weighted") pp_elt
+  let dump pp_elt = Fmt.Dump.iter iter (Fmt.any "rke:weighted") pp_elt
 
   let clear q =
     q.r <- 0 ;

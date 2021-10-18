@@ -162,7 +162,7 @@ let length = function
   | Shallow (Three _) -> 3
 
 let pp ?sep pp_elt = Fmt.iter ?sep iter pp_elt
-let dump pp_elt = Fmt.Dump.iter iter (Fmt.always "fke") pp_elt
+let dump pp_elt = Fmt.Dump.iter iter (Fmt.any "fke") pp_elt
 
 module Weighted = struct
   type ('a, 'b) t =
@@ -326,5 +326,5 @@ module Weighted = struct
   let clear t = {t with r= 0; w= 0}
   let unsafe_bigarray {v; _} = v
   let pp ?sep pp_elt = Fmt.iter ?sep iter pp_elt
-  let dump pp_elt = Fmt.Dump.iter iter (Fmt.always "fke:weighted") pp_elt
+  let dump pp_elt = Fmt.Dump.iter iter (Fmt.any "fke:weighted") pp_elt
 end
