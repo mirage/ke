@@ -315,9 +315,9 @@ let exclude =
 
 let command =
   let doc = "Example of ke." in
-  let exits = Term.default_exits in
-  Term.
-    ( ret (const run $ database $ exclude $ roots),
-      Term.info "packer" ~version:"dev" ~doc ~exits )
+  let exits = Cmd.Exit.defaults in
+  Cmd.v
+    (Cmd.info "packer" ~version:"dev" ~doc ~exits)
+    Term.(ret (const run $ database $ exclude $ roots))
 
-let () = Term.(exit @@ eval command)
+let () = Cmd.(exit @@ eval command)
