@@ -30,5 +30,5 @@ depends: [
   "rresult"           {with-test}
   "jsonm"             {with-test}
   "psq"               {with-test}
-  "cmdliner"          {with-test}
+  "cmdliner"          {>= "1.1.0" & with-test}
 ]
