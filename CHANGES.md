@@ -1,3 +1,11 @@
+### v0.5 2022-03-18 Paris (France)
+
+* Remove `{build}` directive into the OPAM file (@CraigFe, #10)
+* Add `unsafe_bigarray` into `Rke.Weighted` (@anmonteiro, #11)
+* Lint OPAM file (@kit-ty-kate, #12)
+* Fix the distribution and the CI (@dinosaure, #13)
+* Update the distribution with `cmdliner.1.1.0` (@dinosaure, #15)
+
 ### v0.4 2019-07-24 Мостар (Боснa и Херцеговина)
 
 * Call `dune subst` only when we _pin_ `ke`
