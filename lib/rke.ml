@@ -2,8 +2,8 @@ type ('a, 'b) t = {
   mutable r : int;
   mutable w : int;
   mutable c : int;
-  k : ('a, 'b) Bigarray_compat.kind;
-  mutable v : ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t;
+  k : ('a, 'b) Bigarray.kind;
+  mutable v : ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t;
 }
 
 exception Empty
@@ -42,29 +42,29 @@ let create ?capacity kind =
     w = 0;
     c = capacity;
     k = kind;
-    v = Bigarray_compat.Array1.create kind Bigarray_compat.c_layout capacity;
+    v = Bigarray.Array1.create kind Bigarray.c_layout capacity;
   }
 
 let capacity { c; _ } = c
 
 let copy t =
-  let v = Bigarray_compat.Array1.create t.k Bigarray_compat.c_layout t.c in
-  Bigarray_compat.Array1.blit t.v v;
+  let v = Bigarray.Array1.create t.k Bigarray.c_layout t.c in
+  Bigarray.Array1.blit t.v v;
   { r = t.r; w = t.w; c = t.c; v; k = t.k }
 
 let grow t want =
   let max : int -> int -> int = max in
   let c = to_power_of_two (max 1 (max want (size t))) in
-  if c <> Bigarray_compat.Array1.dim t.v then (
-    let dst = Bigarray_compat.Array1.create t.k Bigarray_compat.c_layout c in
+  if c <> Bigarray.Array1.dim t.v then (
+    let dst = Bigarray.Array1.create t.k Bigarray.c_layout c in
     let sze = (size [@inlined]) t in
     let msk = (mask [@inlined]) t t.r in
     let pre = t.c - msk in
     let rst = sze - pre in
     (if rst > 0 then (
-     Bigarray_compat.Array1.(blit (sub t.v msk pre) (sub dst 0 pre));
-     Bigarray_compat.Array1.(blit (sub t.v 0 rst) (sub dst pre rst)))
-    else Bigarray_compat.Array1.(blit (sub t.v msk sze) (sub dst 0 sze)));
+     Bigarray.Array1.(blit (sub t.v msk pre) (sub dst 0 pre));
+     Bigarray.Array1.(blit (sub t.v 0 rst) (sub dst pre rst)))
+    else Bigarray.Array1.(blit (sub t.v msk sze) (sub dst 0 sze)));
     t.v <- dst;
     t.w <- sze;
     t.c <- c;
@@ -72,18 +72,18 @@ let grow t want =
 
 let push t v =
   if (full [@inlined]) t then grow t (2 * (size [@inlined]) t);
-  Bigarray_compat.Array1.unsafe_set t.v ((mask [@inlined]) t t.w) v;
+  Bigarray.Array1.unsafe_set t.v ((mask [@inlined]) t t.w) v;
   t.w <- t.w + 1
 
 let cons t v =
   if (full [@inlined]) t then grow t (2 * (size [@inlined]) t);
   let i = t.r - 1 in
-  Bigarray_compat.Array1.unsafe_set t.v ((mask [@inlined]) t i) v;
+  Bigarray.Array1.unsafe_set t.v ((mask [@inlined]) t i) v;
   t.r <- i
 
 let pop_exn t =
   if (empty [@inlined]) t then raise Empty;
-  let r = Bigarray_compat.Array1.unsafe_get t.v ((mask [@inlined]) t t.r) in
+  let r = Bigarray.Array1.unsafe_get t.v ((mask [@inlined]) t t.r) in
   t.r <- t.r + 1;
   r
 
@@ -91,14 +91,14 @@ let pop t = try Some (pop_exn t) with Empty -> None
 
 let peek_exn t =
   if (empty [@inlined]) t then raise Empty;
-  Bigarray_compat.Array1.unsafe_get t.v ((mask [@inlined]) t t.r)
+  Bigarray.Array1.unsafe_get t.v ((mask [@inlined]) t t.r)
 
 let peek t = try Some (peek_exn t) with Empty -> None
 
 let blit src src_off dst dst_off len =
-  let a = Bigarray_compat.Array1.sub src src_off len in
-  let b = Bigarray_compat.Array1.sub dst dst_off len in
-  Bigarray_compat.Array1.blit a b
+  let a = Bigarray.Array1.sub src src_off len in
+  let b = Bigarray.Array1.sub dst dst_off len in
+  Bigarray.Array1.blit a b
 
 let compress t =
   let len = length t in
@@ -113,7 +113,7 @@ let compress t =
       blit t.v msk t.v 0 pre)
     else
       let tmp =
-        Bigarray_compat.Array1.create t.k Bigarray_compat.c_layout pre
+        Bigarray.Array1.create t.k Bigarray.c_layout pre
       in
       blit t.v msk tmp 0 pre;
       blit t.v 0 t.v pre rst;
@@ -124,7 +124,7 @@ let compress t =
 
 module N = struct
   type ('a, 'b) bigarray =
-    ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
+    ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
 
   type ('a, 'b) blit = 'a -> int -> 'b -> int -> int -> unit
   type 'a length = 'a -> int
@@ -164,10 +164,10 @@ module N = struct
       let rst = len - pre in
       if rst > 0 then
         [
-          Bigarray_compat.Array1.sub t.v msk pre;
-          Bigarray_compat.Array1.sub t.v 0 rst;
+          Bigarray.Array1.sub t.v msk pre;
+          Bigarray.Array1.sub t.v 0 rst;
         ]
-      else [ Bigarray_compat.Array1.sub t.v msk len ]
+      else [ Bigarray.Array1.sub t.v msk len ]
 
   let unsafe_shift t len = t.r <- t.r + len
 
@@ -182,7 +182,7 @@ let iter f t =
   let idx = ref t.r in
   let max = t.w in
   while !idx <> max do
-    f (Bigarray_compat.Array1.unsafe_get t.v ((mask [@inlined]) t !idx));
+    f (Bigarray.Array1.unsafe_get t.v ((mask [@inlined]) t !idx));
     incr idx
   done
 
@@ -192,7 +192,7 @@ let rev_iter f t =
     let idx = ref (pred t.w) in
     let min = t.r in
     while
-      f (Bigarray_compat.Array1.unsafe_get t.v ((mask [@inlined]) t !idx));
+      f (Bigarray.Array1.unsafe_get t.v ((mask [@inlined]) t !idx));
       !idx <> min
     do
       decr idx
@@ -215,8 +215,8 @@ module Weighted = struct
     mutable r : int;
     mutable w : int;
     c : int;
-    k : ('a, 'b) Bigarray_compat.kind;
-    v : ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t;
+    k : ('a, 'b) Bigarray.kind;
+    v : ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t;
   }
 
   exception Empty
@@ -243,25 +243,25 @@ module Weighted = struct
         w = 0;
         c = capacity;
         k = kind;
-        v = Bigarray_compat.Array1.create kind Bigarray_compat.c_layout capacity;
+        v = Bigarray.Array1.create kind Bigarray.c_layout capacity;
       },
       capacity )
 
   let copy t =
-    let v = Bigarray_compat.Array1.create t.k Bigarray_compat.c_layout t.c in
-    Bigarray_compat.Array1.blit t.v v;
+    let v = Bigarray.Array1.create t.k Bigarray.c_layout t.c in
+    Bigarray.Array1.blit t.v v;
     { r = t.r; w = t.w; c = t.c; v; k = t.k }
 
   let from v =
-    if not (is_power_of_two (Bigarray_compat.Array1.dim v)) then
+    if not (is_power_of_two (Bigarray.Array1.dim v)) then
       Fmt.invalid_arg "RBA.from";
-    let c = Bigarray_compat.Array1.dim v in
-    let k = Bigarray_compat.Array1.kind v in
+    let c = Bigarray.Array1.dim v in
+    let k = Bigarray.Array1.kind v in
     { r = 0; w = 0; c; k; v }
 
   let push_exn t v =
     if (full [@inlined]) t then raise Full;
-    Bigarray_compat.Array1.unsafe_set t.v ((mask [@inlined]) t t.w) v;
+    Bigarray.Array1.unsafe_set t.v ((mask [@inlined]) t t.w) v;
     t.w <- t.w + 1
 
   let push t v = try Some (push_exn t v) with Full -> None
@@ -269,14 +269,14 @@ module Weighted = struct
   let cons_exn t v =
     if (full [@inlined]) t then raise Full;
     let i = t.r - 1 in
-    Bigarray_compat.Array1.unsafe_set t.v ((mask [@inlined]) t i) v;
+    Bigarray.Array1.unsafe_set t.v ((mask [@inlined]) t i) v;
     t.r <- i
 
   let cons t v = try Some (cons_exn t v) with Full -> None
 
   let pop_exn t =
     if (empty [@inlined]) t then raise Empty;
-    let r = Bigarray_compat.Array1.unsafe_get t.v ((mask [@inlined]) t t.r) in
+    let r = Bigarray.Array1.unsafe_get t.v ((mask [@inlined]) t t.r) in
     t.r <- t.r + 1;
     r
 
@@ -284,7 +284,7 @@ module Weighted = struct
 
   let peek_exn t =
     if (empty [@inlined]) t then raise Empty;
-    Bigarray_compat.Array1.unsafe_get t.v ((mask [@inlined]) t t.r)
+    Bigarray.Array1.unsafe_get t.v ((mask [@inlined]) t t.r)
 
   let peek t = try Some (peek_exn t) with Empty -> None
 
@@ -301,7 +301,7 @@ module Weighted = struct
         blit t.v msk t.v 0 pre)
       else
         let tmp =
-          Bigarray_compat.Array1.create t.k Bigarray_compat.c_layout pre
+          Bigarray.Array1.create t.k Bigarray.c_layout pre
         in
         blit t.v msk tmp 0 pre;
         blit t.v 0 t.v pre rst;
@@ -312,7 +312,7 @@ module Weighted = struct
 
   module N = struct
     type ('a, 'b) bigarray =
-      ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
+      ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
 
     type ('a, 'b) blit = 'a -> int -> 'b -> int -> int -> unit
     type 'a length = 'a -> int
@@ -328,12 +328,12 @@ module Weighted = struct
           blit v off t.v msk pre;
           blit v (off + pre) t.v 0 rst;
           [
-            Bigarray_compat.Array1.sub t.v ((mask [@inlined]) t t.w) pre;
-            Bigarray_compat.Array1.sub t.v 0 rst;
+            Bigarray.Array1.sub t.v ((mask [@inlined]) t t.w) pre;
+            Bigarray.Array1.sub t.v 0 rst;
           ])
         else (
           blit v off t.v msk len;
-          [ Bigarray_compat.Array1.sub t.v ((mask [@inlined]) t t.w) len ])
+          [ Bigarray.Array1.sub t.v ((mask [@inlined]) t t.w) len ])
       in
       t.w <- t.w + len;
       ret
@@ -364,10 +364,10 @@ module Weighted = struct
         let rst = len - pre in
         if rst > 0 then
           [
-            Bigarray_compat.Array1.sub t.v msk pre;
-            Bigarray_compat.Array1.sub t.v 0 rst;
+            Bigarray.Array1.sub t.v msk pre;
+            Bigarray.Array1.sub t.v 0 rst;
           ]
-        else [ Bigarray_compat.Array1.sub t.v msk len ]
+        else [ Bigarray.Array1.sub t.v msk len ]
 
     let unsafe_shift t len = t.r <- t.r + len
 
@@ -382,7 +382,7 @@ module Weighted = struct
     let idx = ref t.r in
     let max = t.w in
     while !idx <> max do
-      f (Bigarray_compat.Array1.unsafe_get t.v ((mask [@inlined]) t !idx));
+      f (Bigarray.Array1.unsafe_get t.v ((mask [@inlined]) t !idx));
       incr idx
     done
 
@@ -392,7 +392,7 @@ module Weighted = struct
       let idx = ref (pred t.w) in
       let min = t.r in
       while
-        f (Bigarray_compat.Array1.unsafe_get t.v ((mask [@inlined]) t !idx));
+        f (Bigarray.Array1.unsafe_get t.v ((mask [@inlined]) t !idx));
         !idx <> min
       do
         decr idx
