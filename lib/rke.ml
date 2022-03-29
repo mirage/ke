@@ -112,9 +112,7 @@ let compress t =
       blit t.v 0 t.v pre rst;
       blit t.v msk t.v 0 pre)
     else
-      let tmp =
-        Bigarray.Array1.create t.k Bigarray.c_layout pre
-      in
+      let tmp = Bigarray.Array1.create t.k Bigarray.c_layout pre in
       blit t.v msk tmp 0 pre;
       blit t.v 0 t.v pre rst;
       blit tmp 0 t.v 0 pre)
@@ -123,9 +121,7 @@ let compress t =
   t.w <- len
 
 module N = struct
-  type ('a, 'b) bigarray =
-    ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
-
+  type ('a, 'b) bigarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
   type ('a, 'b) blit = 'a -> int -> 'b -> int -> int -> unit
   type 'a length = 'a -> int
 
@@ -163,10 +159,7 @@ module N = struct
       let pre = t.c - msk in
       let rst = len - pre in
       if rst > 0 then
-        [
-          Bigarray.Array1.sub t.v msk pre;
-          Bigarray.Array1.sub t.v 0 rst;
-        ]
+        [ Bigarray.Array1.sub t.v msk pre; Bigarray.Array1.sub t.v 0 rst ]
       else [ Bigarray.Array1.sub t.v msk len ]
 
   let unsafe_shift t len = t.r <- t.r + len
@@ -300,9 +293,7 @@ module Weighted = struct
         blit t.v 0 t.v pre rst;
         blit t.v msk t.v 0 pre)
       else
-        let tmp =
-          Bigarray.Array1.create t.k Bigarray.c_layout pre
-        in
+        let tmp = Bigarray.Array1.create t.k Bigarray.c_layout pre in
         blit t.v msk tmp 0 pre;
         blit t.v 0 t.v pre rst;
         blit tmp 0 t.v 0 pre)
@@ -311,9 +302,7 @@ module Weighted = struct
     t.w <- len
 
   module N = struct
-    type ('a, 'b) bigarray =
-      ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
-
+    type ('a, 'b) bigarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
     type ('a, 'b) blit = 'a -> int -> 'b -> int -> int -> unit
     type 'a length = 'a -> int
 
@@ -363,10 +352,7 @@ module Weighted = struct
         let pre = t.c - msk in
         let rst = len - pre in
         if rst > 0 then
-          [
-            Bigarray.Array1.sub t.v msk pre;
-            Bigarray.Array1.sub t.v 0 rst;
-          ]
+          [ Bigarray.Array1.sub t.v msk pre; Bigarray.Array1.sub t.v 0 rst ]
         else [ Bigarray.Array1.sub t.v msk len ]
 
     let unsafe_shift t len = t.r <- t.r + len

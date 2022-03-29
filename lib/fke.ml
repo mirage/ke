@@ -270,9 +270,7 @@ module Weighted = struct
   let peek t = try Some (peek_exn t) with Empty -> None
 
   module N = struct
-    type ('a, 'b) bigarray =
-      ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
-
+    type ('a, 'b) bigarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
     type ('a, 'b) blit = 'a -> int -> 'b -> int -> int -> unit
     type 'a length = 'a -> int
 
