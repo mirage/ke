@@ -1,4 +1,4 @@
 (library
  (name ke)
  (public_name ke)
- (libraries fmt bigarray-compat))
+ (libraries fmt))

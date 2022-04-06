@@ -191,4 +191,4 @@ let tests_push_and_pop =
 let command =
   Bench.make_command (tests_push @ tests_big_push @ tests_push_and_pop)
 
-let () = Command.run command
+let () = Command_unix.run command

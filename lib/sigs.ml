@@ -71,7 +71,7 @@ module type R = sig
   val is_empty : ('a, 'b) t -> bool
   (** Return [true] if the given queue is empty, [false] otherwise. *)
 
-  val create : ?capacity:int -> ('a, 'b) Bigarray_compat.kind -> ('a, 'b) t
+  val create : ?capacity:int -> ('a, 'b) Bigarray.kind -> ('a, 'b) t
   (** Return a new queue, initially empty. *)
 
   val capacity : ('a, 'b) t -> int
@@ -114,8 +114,7 @@ module type R = sig
      {!push}/{!N.push} operation - but it can not ensure enough free space. *)
 
   module N : sig
-    type ('a, 'b) bigarray =
-      ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
+    type ('a, 'b) bigarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
     (** The type of the internal bigarray of {!t}. *)
 
     type ('a, 'b) blit = 'a -> int -> 'b -> int -> int -> unit
@@ -161,9 +160,7 @@ module type R = sig
       unit option
     (** Same as {!keep_exn} but if it fails, it returns [None]. *)
 
-    val peek :
-      ('a, 'b) t ->
-      ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t list
+    val peek : ('a, 'b) t -> ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t list
     (** Returns a sub-part of available to read payloads. *)
 
     val unsafe_shift : ('a, 'b) t -> int -> unit
@@ -215,8 +212,7 @@ module Weighted = struct
     val is_empty : ('a, 'b) t -> bool
     (** Return [true] if the given queue is empty, [false] otherwise. *)
 
-    val create :
-      ?capacity:int -> ('a, 'b) Bigarray_compat.kind -> ('a, 'b) t * int
+    val create : ?capacity:int -> ('a, 'b) Bigarray.kind -> ('a, 'b) t * int
     (** Return a new queue, initially empty with the real capacity of it. *)
 
     val length : ('a, 'b) t -> int
@@ -268,8 +264,7 @@ module Weighted = struct
        {!push}/{!N.push} operation - but it can not ensure enough free space. *)
 
     module N : sig
-      type ('a, 'b) bigarray =
-        ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
+      type ('a, 'b) bigarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
       (** The type of the internal bigarray of {!t}. *)
 
       type ('a, 'b) blit = 'a -> int -> 'b -> int -> int -> unit
@@ -329,8 +324,7 @@ module Weighted = struct
       (** Same as {!keep_exn} but if it fails, it returns [None]. *)
 
       val peek :
-        ('a, 'b) t ->
-        ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t list
+        ('a, 'b) t -> ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t list
       (** Returns a sub-part of available to read payloads. *)
 
       val unsafe_shift : ('a, 'b) t -> int -> unit
@@ -368,11 +362,10 @@ module Weighted = struct
     (** Human-readable pretty-printer of {!t}. *)
 
     val unsafe_bigarray :
-      ('a, 'b) t -> ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
+      ('a, 'b) t -> ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
     (** / **)
 
-    val from :
-      ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t -> ('a, 'b) t
+    val from : ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t -> ('a, 'b) t
   end
 
   module type F = sig
@@ -388,8 +381,7 @@ module Weighted = struct
     val is_empty : ('a, 'b) t -> bool
     (** Return [true] if the given queue is empty, [false] otherwise. *)
 
-    val create :
-      ?capacity:int -> ('a, 'b) Bigarray_compat.kind -> ('a, 'b) t * int
+    val create : ?capacity:int -> ('a, 'b) Bigarray.kind -> ('a, 'b) t * int
     (** Return a new queue, initially empty with the real capacity of it. *)
 
     val length : ('a, 'b) t -> int
@@ -437,8 +429,7 @@ module Weighted = struct
     (** Discard all elements from a queue. *)
 
     module N : sig
-      type ('a, 'b) bigarray =
-        ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
+      type ('a, 'b) bigarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
       (** The type of the internal bigarray of {!t}. *)
 
       type ('a, 'b) blit = 'a -> int -> 'b -> int -> int -> unit
@@ -534,9 +525,8 @@ module Weighted = struct
     (** / **)
 
     val unsafe_bigarray :
-      ('a, 'b) t -> ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
+      ('a, 'b) t -> ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
 
-    val from :
-      ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t -> ('a, 'b) t
+    val from : ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t -> ('a, 'b) t
   end
 end

@@ -14,17 +14,16 @@ build: [ "dune" "build" "-p" name "-j" jobs ]
 run-test: [ "dune" "runtest" "-p" name "-j" jobs ]
 
 depends: [
-  "ocaml"      {>= "4.03.0"}
+  "ocaml"      {>= "4.08.0"}
   "dune"       {>= "2.0"}
   "fmt"        {>= "0.8.7"}
-  "bigarray-compat"
   "alcotest"          {with-test}
   "bigstringaf"       {with-test}
   "bechamel"          {with-test}
   "bechamel-notty"    {with-test}
   "bechamel-perf"     {with-test}
   "ocplib-json-typed" {with-test}
-  "core_bench"        {with-test}
+  "core_bench"        {with-test & >= "v0.15"}
   "lwt"               {with-test}
   "crowbar"           {with-test}
   "rresult"           {with-test}
