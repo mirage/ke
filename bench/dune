@@ -6,7 +6,7 @@
 (executable
  (name bench_with_core)
  (modules bench_with_core)
- (libraries bigstringaf core_bench ke core))
+ (libraries bigstringaf core_bench ke core core_unix.command_unix))
 
 (rule
  (alias runbench)
