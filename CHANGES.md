@@ -1,3 +1,7 @@
+### v0.6 2022-04-07 Paris (France)
+
+* Require OCaml 4.08 and remove `bigarray-compat` dependency (@hannesm, #17)
+
 ### v0.5 2022-03-18 Paris (France)
 
 * Remove `{build}` directive into the OPAM file (@CraigFe, #10)
