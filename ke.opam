@@ -17,7 +17,7 @@ depends: [
   "ocaml"              {>= "4.08.0"}
   "dune"               {>= "2.0"}
   "alcotest"           {with-test}
-  "bigstringaf"        {with-test}
+  "bigstringaf"        {>= "0.9.0" & with-test}
   "bechamel"           {with-test}
   "bechamel-js"        {with-test}
   "json-data-encoding" {with-test}
