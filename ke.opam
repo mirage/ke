@@ -22,7 +22,7 @@ depends: [
   "bechamel"          {with-test}
   "bechamel-notty"    {with-test}
   "bechamel-perf"     {with-test}
-  "ocplib-json-typed" {with-test}
+  "json-data-encoding" {with-test}
   "core_bench"        {with-test & >= "v0.15"}
   "lwt"               {with-test}
   "crowbar"           {with-test}
