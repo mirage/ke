@@ -137,19 +137,15 @@ let test_push_and_pop_queue =
 let tests_push_and_pop =
   [ test_push_and_pop_fke; test_push_and_pop_rke; test_push_and_pop_queue ]
 
-let () = Bechamel_notty.Unit.add Instance.monotonic_clock "ns"
-let () = Bechamel_notty.Unit.add Instance.minor_allocated "w"
-let () = Bechamel_notty.Unit.add Instance.major_allocated "mw"
-let () = Bechamel_notty.Unit.add Bechamel_perf.Instance.cpu_clock "ns"
 let ( <.> ) f g x = f (g x)
+let nothing _ = Ok ()
 
 let () =
   let ols =
     Analyze.ols ~r_square:true ~bootstrap:0 ~predictors:Measure.[| run |]
   in
   let instances =
-    Instance.
-      [ minor_allocated; major_allocated; Bechamel_perf.Instance.cpu_clock ]
+    Instance.[ minor_allocated; major_allocated; monotonic_clock ]
   in
   let tests =
     match Sys.argv with
@@ -158,22 +154,18 @@ let () =
     | [| _; "push&pop" |] -> tests_push_and_pop
     | [| _; "big-push" |] -> tests_big_push
     | [| _; "all" |] -> tests_push @ tests_big_push @ tests_push_and_pop
-    | _ -> Fmt.invalid_arg "%s {push|all}" Sys.argv.(1)
+    | _ -> Fmt.invalid_arg "%s {push|push&pop|big-push|all}" Sys.argv.(1)
   in
+  let tests = Bechamel.Test.make_grouped ~name:"ke" tests in
   let cfg = Benchmark.cfg ~limit:3000 () in
-  let raw_results = List.map (Benchmark.all cfg instances) tests in
+  let raw_results = Benchmark.all cfg instances tests in
   let results =
-    List.map
-      (fun raw_results ->
-        List.map
-          (fun instance -> Analyze.all ols instance raw_results)
-          instances
-        |> Analyze.merge ols instances)
-      raw_results
+    List.map (fun instance -> Analyze.all ols instance raw_results) instances
+    |> Analyze.merge ols instances
   in
-  let rect = { Bechamel_notty.w = 80; h = 1 } in
-  List.iter
-    (Notty_unix.(output_image <.> eol)
-    <.> Bechamel_notty.Multiple.image_of_ols_results ~rect
-          ~predictor:Measure.run)
-    results
+  let open Bechamel_js in
+  emit ~dst:(Channel stdout) nothing ~compare:String.compare
+    ~x_label:Measure.run
+    ~y_label:(Measure.label Instance.monotonic_clock)
+    (results, raw_results)
+  |> Rresult.R.failwith_error_msg

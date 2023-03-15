@@ -20,8 +20,8 @@ depends: [
   "alcotest"          {with-test}
   "bigstringaf"       {with-test}
   "bechamel"          {with-test}
-  "bechamel-notty"    {with-test}
-  "bechamel-perf"     {with-test}
+  "bechamel-js"        {with-test}
+  "bechamel-html"      {with-test}
   "json-data-encoding" {with-test}
   "lwt"               {with-test}
   "crowbar"           {with-test}
