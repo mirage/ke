@@ -20,7 +20,6 @@ depends: [
   "bigstringaf"        {with-test}
   "bechamel"           {with-test}
   "bechamel-js"        {with-test}
-  "bechamel-html"      {with-test}
   "json-data-encoding" {with-test}
   "lwt"                {with-test}
   "crowbar"            {with-test}
