@@ -1,3 +1,3 @@
 (executable
  (name packer)
- (libraries psq ke jsonm fmt rresult cmdliner ocplib-json-typed lwt lwt.unix))
+ (libraries psq ke jsonm fmt rresult cmdliner json-data-encoding lwt lwt.unix))

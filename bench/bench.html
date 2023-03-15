@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script src="https://unpkg.com/d3-simple-slider"></script>
+  <script src="https://unpkg.com/simple-statistics@7.0.2/dist/simple-statistics.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/default.min.css">
+  <link href="style.css" rel="stylesheet" type="text/css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/highlight.min.js"></script>
+  <style>
+    *{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body{
+    width: 100%;
+    height: 100%;
+    font-family:Helvetica Neue,metric,sans-serif;
+    text-rendering: optimizeLegibility;
+}
+
+.center{
+    width: 500px;
+    margin:auto
+}
+
+text{
+    font-family: metric,sans-serif;
+}
+
+.ml {
+    text-align: left
+}
+
+svg {
+    overflow: hidden;
+    margin: auto
+}
+
+.axis line, .axis path{
+    stroke: #2E3532;
+    stroke-width:1px;
+}
+
+.axisTitle, .axis text{
+    fill: #2E3532;
+    font-size:12px;
+}
+
+.background {
+    fill: #FBFBFB;
+    stroke: #2E3532;
+}
+
+.axisTitle, .chartTitle{
+    text-anchor: middle
+}
+
+
+.ytitle {
+    text-anchor: middle;
+    transform: rotate(90deg)
+}
+
+.warningtext{
+    text-anchor: center;
+    fill: #F06449;
+}
+
+.regLine {
+    stroke: #F06449;
+    stroke-width:2px;
+    opacity:0.7
+}
+
+.circle {
+    fill: #4ECDC4;
+    stroke: #292f36;
+    stroke-width:0.3px
+}
+
+table {
+    margin:auto;
+    text-align:left;
+    border-spacing: 15px 5px;
+    border: 1px solid #2E3532
+}
+
+th {
+    text-align: center;
+    color:#F06449
+}
+
+
+tr {
+    fill: #2E3532;
+    font-size:10px
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  width: auto;
+  background-color: #F06449;
+  color: #FFFFFF;
+  text-align: center;
+  border-radius: 10px;
+  padding: 0 5px 0 5px;
+  /* Position the tooltip */
+  position: absolute;
+  z-index: 1;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+}
+.bar {
+    fill: #4ECDC4;
+    stroke:#292f36;
+}
+.bar:hover {
+    fill: #F06449;
+    stroke:#292f36;
+    stroke-width:1px;
+}
+
+.radio {
+    margin: auto;
+    width : 200px;
+}
+
+.wrapper {
+    display: grid;
+    margin: 50px 50px 50px 50px;
+    gap: 10px 20px;
+    grid-auto-rows: minmax(20px, auto);
+    text-align: center;
+    place-items: center;
+}
+
+.mainTitle, .summarizeTitle {
+    height:30px;
+    width: auto;
+    border-radius: 2px;
+    padding: 0 45px 0 45px;
+    border-style: solid;
+    border-width:1px;
+    box-shadow: 2px 2px 1px rgba(0,0,0,0.1);
+    color:  #2E3532;
+    background: #FBFBFB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.slidecontainer{
+    width: 50%;
+}
+
+  </style>
+</head>
+<body>
+
+  <script type="text/javascript">
+    // structure of JSON
+// { xLabel: string,
+//   yLabel: string,
+//   series: [ tests ] }
+//
+// tests := { name: string,
+//            description: { start : int, sampling: float, stabilize: bool,
+//                           quota: float, limit: int, instances: [string],
+//                           samples: int, time : float}
+//            dataset: [ point ],
+//            kde : [ v: float ] (optional)
+//            result: { estimate: float, r_square: float (optional) } }
+//
+// point := { x : double,
+//            y : double }
+//
+// xLabel and yLabel are the same for any tests
+window.onload = function () {
+
+const wsvg = 600;
+const hsvg = 400;
+const wslider = 200;
+const hslider = 50;
+const margin = {left:50,right:50,top:20,bottom:50};
+const dotSize = 1.5;
+const innerW = wsvg-(margin.left+margin.right);
+const innerH = hsvg-(margin.top+margin.bottom);
+
+const marginbar = {left:150,right:150,top:50,bottom:50};
+const wbar = 900;
+const innerWbar = wbar-(marginbar.left+marginbar.right);
+
+const SQRT_2PI = Math.sqrt(2 * Math.PI);
+
+// Main function : place containers and call plot functions.
+function render(inputs) {
+    inputs.series.forEach(
+	function(serie) {
+	    serie.dataset.forEach(
+		function(d) {
+		    d.x = +d.x;
+		    d.y = +d.y;
+		});}
+    );
+
+    // First step : check if there is no kde/histogram data at all in
+    // the benchmarks, in which case, we want to reduce our layout to
+    // one column.
+    let nonempty_kde = false;
+    inputs.series.forEach(function (serie) {
+	if ('kde' in serie) {
+	    nonempty_kde = nonempty_kde || true;} });
+    const nb_col = nonempty_kde ? 2 : 1;
+
+    // ************************************************ //
+    //              Layout of the page                  //
+    // ************************************************ //
+    // + a summarize bar graph on top
+    // + one section for each benchmark which includes
+    //     * 1 title
+    //     * 1 linear regression graph and its title and information table
+    //     * if kde data are available a histogram/kde graph with its control panel.
+    //
+    // If none of the benchmarks has kde data, the layout is the same
+    // but with only one column (no hist/kde graphs).
+    //
+    //
+    //              c1:        c2:
+    //
+    // r1:            *title*
+    //           ___________________
+    // r2:      |   summarize bar   |
+    //          |___________________|
+    //
+    // r3:           *title-1*
+    //
+    // r4:        *title*   *radio*
+    //           _______     _______
+    // r5:      | lr-1  |   | kde-1 |
+    //          |_______|   |_______|
+    //
+    // r6:      *infos-1*   *slider-1*
+    // ..
+    // r(4i+3):       *title-i*
+    //
+    // r(4i+4):  *title*     *radio*
+    //           _______     _______
+    // r(4i+5): | lr-i  |   | kde-i |
+    //          |_______|   |_______|
+    //
+    // r(4i+6): *infos-i*   *slider-i*
+    //
+    // etc ..
+
+      const main = d3.select("body")
+	  .append("div")
+	    .attr("class", "wrapper")
+	    .style("grid-template-columns", (nonempty_kde ? "repeat(2,"+wsvg+"px)" : "900px"))
+	    .attr("id", "main");
+
+    // ************************************************ //
+    //              Summarize bar graph                 //
+    // ************************************************ //
+
+    // Title
+    main.append("div")
+   	  .style("grid-row", "1")
+      	.style("grid-column", "1 / "+(nb_col+1))
+  	  .attr("class", "summarizeTitle")
+  	.text("Benchmarks summary");
+
+    // Bar graph
+    let bar_container = main
+	.append("div")
+   	  .style("grid-row", "2")
+      	  .style("grid-column", "1 / "+(nb_col+1))
+	  .attr("id", "bar");
+    plot_summarize_bar_graph(bar_container, inputs);
+
+
+    // ************************************************ //
+    //              Layout for lr/kde graphs            //
+    // ************************************************ //
+
+    // Benchmark titles
+    const titles = main
+	  .selectAll(".mainTitle")
+	  .data(inputs.series)
+	  .enter()
+	  .append("div")
+	    .attr("id", (data, i) => "title-"+i)
+   	    .style("grid-row", (data,i) =>""+(4*i+3))
+      	    .style("grid-column", "1 / "+(nb_col+1))
+  	    .attr("class","mainTitle")
+	  .append("text")
+  	    .attr("x", wsvg)
+  	    .attr("y", margin.top-10)
+            .text((data, i) => "#"+data.name);
+
+    // Linear regression graph titles
+    const titles_lr = main
+	  .selectAll("#title_lr")
+	  .data(inputs.series)
+	  .enter()
+	  .append("div")
+            .attr("id",  "title_lr")
+   	    .style("grid-row", (data,i) =>""+(4*i+4))
+   	    .style("grid-column", "1")
+	  .append("text")
+  	    .attr("class","chartTitle")
+  	    .text("Linear regression");
+
+    // Containers for linear regression graphs
+    const lr_graphs = main
+	  .selectAll(".lr")
+	  .data(inputs.series)
+	  .enter()
+	  .append("div")
+            .attr("class", "lr")
+	    .attr("id", (data, i) => "linearRegression-"+i)
+   	    .style("grid-row", (data,i) =>""+(4*i+5))
+   	  .style("grid-column", "1");
+
+    // Containers for linear regression info tables
+    const lr_info = main
+	  .selectAll(".lr-info")
+	  .data(inputs.series)
+	  .enter()
+	  .append("div")
+            .attr("class", "lr-info")
+	    .attr("id", (data, i) => "lr-info-"+i)
+   	    .style("grid-row", (data,i) =>""+(4*i+6))
+            .style("grid-column", "1");
+
+    let radio_div, kde_graphs, kde_controler;
+    if (nonempty_kde) {
+	// Containers for radio buttons to choose between histogram/kde plots
+	radio_div = main
+	      .selectAll(".radio_div")
+	      .data(inputs.series)
+	      .enter()
+	      .append("div")
+              .attr("class",  "radio")
+	      .attr("id", (d, i) => "radio_div"+i)
+   	      .style("grid-row", (data,i) =>""+(4*i+4))
+   	      .style("grid-column", "2");
+
+	// Containers for kde/hist graph
+	kde_graphs = main
+	      .selectAll(".kde")
+	      .data(inputs.series)
+	      .enter()
+	      .append("div")
+              .attr("class", "kde")
+	      .attr("id", (data, i) => "histKde-"+i)
+   	      .style("grid-row", (data,i) =>""+(4*i+5))
+   	      .style("grid-column", "2");
+
+	// Containers for kde/hist controlers
+	kde_controler = main
+	      .selectAll(".kde-controler")
+	      .data(inputs.series)
+	      .enter()
+	      .append("div")
+              .attr("class", "kde-controler")
+	      .attr("id", (data, i) => "kde-controler-"+i)
+   	      .style("grid-row", (data,i) =>""+(4*i+6))
+              .style("grid-column", "2");
+    }
+
+    // ************************************************ //
+    //          Linear regression graph                 //
+    // ************************************************ //
+    lr_graphs.each( function(serie, i) {
+	//Curves for each input
+	const xMin = 0;
+	const xMax = d3.max(serie.dataset, d => d.x);
+	const yMin = 0;
+	const yMax = d3.max(serie.dataset, d => d.y);
+
+	// Define x axis
+	const xScale = d3.scaleLinear()
+  	      .domain([xMin,xMax])
+  	      .range([0,innerW])
+  	      .nice();
+	const xAxis = d3.axisBottom()
+  	      .scale(xScale)
+  	      .ticks(8, "s");
+	// "s" = number format such as 1000 -> 1k
+
+	// Define y axis
+	const yScale = d3.scaleLinear()
+  	      .domain([yMin,yMax])
+  	      .range([innerH,0])
+  	      .nice();
+	const yAxis = d3.axisLeft()
+  	      .scale(yScale)
+  	      .ticks(8, "s");
+
+	// Svg
+  	const plot = d3.select(this)
+	    .append("svg")
+  	      .attr("width",wsvg)
+  	      .attr("height",hsvg);
+	// Color background
+	plot.append("rect")
+  	    .attr("x",margin.left)
+  	    .attr("y",margin.top)
+  	    .attr("width",innerW)
+  	    .attr("height",innerH)
+  	    .attr("class","background axis");
+	// Plot axis
+	plot.append("g")
+  	    .attr("transform",
+	 	  "translate("+margin.left+","
+	 	  +(hsvg-margin.bottom)+")")
+	    .attr("class", "axis")
+  	    .call(xAxis);
+	plot.append("g")
+  	    .attr("transform",
+	  	  "translate("+margin.left+","
+		  +margin.top+")")
+	    .attr("class", "axis")
+  	    .call(yAxis);
+	// Print axis titles
+	plot.append("text")
+	    .attr("class", "axisTitle")
+	    .attr("x", wsvg/2)
+	    .attr("y", hsvg-10)
+	    .text(inputs.xLabel);
+	plot.append("text")
+	    .attr("class", "axisTitle ytitle")
+	    .attr("transform-origin", 0, hsvg/2)
+	    .attr("x", 0)
+	    .attr("y", hsvg/2)
+	    .text(inputs.yLabel);
+
+	// Plot data
+	plot.append("g")
+	    .attr("transform",
+		  "translate("+margin.left+","
+		  +margin.top+")")
+  	    .selectAll("circle")
+  	    .data(serie.dataset)
+  	    .enter()
+  	    .append("circle")
+	    .attr("class", "circle")
+  	    .attr("r", dotSize)
+  	    .attr("cx", d => xScale(d.x))
+  	    .attr("cy", d => yScale(d.y));
+
+	// Plot linear regression line
+
+	const xVals = serie.dataset.map((e,j) => e.x);
+	const yVals = serie.dataset.map((e,j) => e.y);
+	const pairs = [];
+	xVals.forEach((d,i) => pairs.push([xVals[i],yVals[i]]));
+	const linReg = ss.linearRegression(pairs);
+	const linRegLine = ss.linearRegressionLine(linReg);
+	let line = plot
+	    .append("line")
+    	      .attr("transform","translate("+margin.left+","+margin.top+")")
+    	      .attr("class","regLine")
+    	      .attr("x1",xScale(xMin))
+    	      .attr("x2",xScale(xMin))
+    	      .attr("y1",yScale(linRegLine(xMin)))
+    	      .attr("y2",yScale(linRegLine(xMin)));
+	line.transition().duration(1000).delay(2000)
+    	      .attr("x2",xScale(xMax))
+    	      .attr("y2",yScale(linRegLine(xMax)));
+
+	// Add text boxes
+	//const meanX = ss.mean(xVals).toFixed(0);
+	//const meanY = ss.mean(yVals).toFixed(2);
+	//const varX = ss.sampleVariance(xVals).toFixed(0);
+	//const varY = ss.sampleVariance(yVals).toFixed(1);
+	//const corCoeff = ss.sampleCorrelation(xVals,yVals).toFixed(3);
+
+	const lr_results = [
+	    ["Linear regression line", "y = "+linReg.b.toFixed(2)+" + "+linReg.m.toFixed(3)+"x"],
+	    ["Coefficient", serie.result.estimate],
+	    ["R²", serie.result.r_square]
+	];
+
+	const sampling_to_string = sampling =>
+              (Number.isInteger(sampling) ?  "`Linear "+sampling+"" : "`Geometric "+sampling+"");
+
+	const format = v  => d3.format("s")(v);
+
+	const param_benchmarks = [
+	    ["LR sampling (sampling)", sampling_to_string(serie.description.sampling)],
+	    ["Start (start)", serie.description.start],
+	    ["Benchmark runtime (time / quota)",
+	     format(serie.description.time) + " / " + format(serie.description.quota)],
+	    ["Number of runs (samples)", serie.description.samples + " / " + serie.description.limit],
+	    ["Stabilized GC (stabilize)", serie.description.stabilize]
+	];
+
+	const table = d3.select("#lr-info-"+i)
+	      .append("table");
+
+	table.append("thead")
+	    .append("tr")
+	    .append("th")
+	    .attr("colspan", 2)
+	    .attr("scope", "col")
+	    .text("Linear regression results");
+
+	table.append("tbody")
+	    .selectAll("tr")
+	    .data(lr_results)
+	    .enter()
+	    .append("tr")
+	    .selectAll("td")
+	    .data(d => d)
+	    .enter()
+	    .append("td")
+	    .text(d=>d);
+
+	table.append("thead")
+	    .append("tr")
+	    .append("th")
+	    .attr("class", "tooltip")
+	    .attr("colspan", 2)
+	    .attr("scope", "col")
+	    .text("Benchmarks parameters")
+	    .append("span")
+	    .attr("class","tooltiptext")
+	    .text("See [Benchmarks.stats]");
+
+	table.append("tbody")
+	    .selectAll("tr")
+	    .data(param_benchmarks)
+	    .enter()
+	    .append("tr")
+	    .selectAll("td")
+	    .data(d => d)
+	    .enter()
+	    .append("td")
+	    .text(d=>d);
+
+    });
+
+    // ************************************************ //
+    //         Histogram and kde graphs                 //
+    // ************************************************ //
+    if (nonempty_kde) {
+        kde_graphs.each(function (serie, i) {
+
+	    // Svg for histogram and kde graphs
+	    let pdfgraph = d3.select(this)
+		.append("svg")
+		.attr("id", "pdfgraph")
+		.attr("width", wsvg)
+		.attr("height", hsvg)
+		.append("g")
+		.attr("transform", "translate("+margin.left+","+margin.top+")");
+
+	    // If there is no kde field in the data [serie], some note
+	    // is written in the svg window.
+	    if (!('kde' in serie)) {
+		pdfgraph.append("text")
+		    .attr("x", (margin.left+margin.right+wsvg)/2)
+		    .attr("y", (margin.top+margin.bottom+hsvg)/2)
+		    .attr("class", "warning")
+		    .text("No available data");
+	    } else if (d3.max(serie.kde) == d3.min(serie.kde)) {
+		pdfgraph.append("text")
+		    .attr("x", wsvg/2)
+		    .attr("y", hsvg/2)
+		    .attr("class", "warningtext")
+		    .text("All data have same value.");
+	    } else {
+		const data = serie.kde;
+		//Some default values
+		const min_slider = (d3.max(data)-d3.min(data))/data.length;
+		const max_slider = (d3.max(data)-d3.min(data))/30;
+		let vslider = min_slider;
+
+		//Radio buttons
+		const form = d3.select("#radio_div"+i)
+		      .append("form");
+
+		form.append("input")
+		    .attr("type", "radio")
+		    .attr("name", "graph")
+		    .attr("value", "hist"+i)
+		    .attr("name", "graph")
+		    .attr("checked", "checked")
+		    .on("change", () => plot_chosen_graph(d3.select(this), "hist"));
+		form.append("label")
+		    .attr("for", "hist"+i)
+		    .text("Histogram");
+		form.append("input")
+		    .attr("type", "radio")
+		    .attr("value", "kde"+i)
+		    .attr("name", "graph")
+		    .on("change", () => plot_chosen_graph(d3.select(this), "kde"));
+		form.append("label")
+		    .attr("for", "kde"+i)
+		    .text("KDE");
+
+		//axis
+		const min = d3.min(data),
+		      max = d3.max(data);
+		const minX = d3.max([0, min-max_slider]),
+		      maxX = max+max_slider;
+
+		//X axis is the same for both graphs (histogram and kde)
+		const xscale = d3.scaleLinear()
+		      .range([0, innerW])
+		      .domain([minX, maxX])
+		      .nice();
+		const xAxis = d3.axisBottom()
+		      .scale(xscale)
+		      .ticks(8, "s");
+
+		//Y axis has a different domain value between both graphs.
+		//So yscale.domain() is defined individually for each plot.
+		const yscale = d3.scaleLinear()
+		      .range([0, innerH])
+		      .nice();
+		const yAxis = d3.axisLeft()
+		      .scale(yscale)
+		      .ticks(8, "s");
+
+		//x value for kde graph
+		const n = 1000;
+		const x = Array(n);
+		const xmin = d3.min(xscale.domain()),
+		      xmax = d3.max(xscale.domain());
+		for (let i=0; i<n; i++) { x[i] = xmin + i*(xmax-xmin)/n; }
+
+		//Compute kde function for min bandwidth value to determine to determine
+		//the max value of Y axis. Only happens one time when loading the webpage.
+		const kde = kernelDensityEstimation(data, min_slider);
+		const v = new Array(n);
+		for (let i=0; i<n;i++){ v[i] = kde(x[i]);}
+		const maxYkde = d3.max(v),
+		      maxYhist = d3.max(histogram(data, max_slider, min, max));
+
+		//background
+		pdfgraph
+		    .append("rect")
+  		    .attr("x", 0)
+  		    .attr("y", 0)
+  		    .attr("width", innerW)
+  		    .attr("height", innerH)
+  		    .attr("class","background axis");
+
+		// x Axis
+		const gxAxis = pdfgraph
+	              .append("g")
+	              .attr("transform","translate(0"+","+innerH+")")
+	              .attr("class", "axis")
+	              .call(xAxis);
+
+		// y Axis
+		const gyAxis = pdfgraph
+	              .append("g")
+	              .attr("class", "axis")
+	              .call(yAxis);
+
+		// X Axis title
+		pdfgraph.append("text")
+		    .attr("class", "axisTitle")
+		    .attr("x", innerW/2)
+		    .attr("y", innerH+40)
+		    .text("Estimated "+inputs.yLabel);
+
+		plot_chosen_graph(d3.select(this), "hist");
+
+		function plot_chosen_graph(container, choice) {
+
+
+		    container.selectAll(".bar").remove();
+		    container.select(".mypath").remove();
+		    container.select(".ytitle").remove();
+
+		    // Erasing control panels if it exists and initializing it
+		    const control_container = d3.select("#kde-controler-"+i);
+		    const slider = control_container.select("#slider-"+i);
+		    const slidertitle = control_container.select("#slidertitle-"+i);
+		    if (!slider.empty())  {
+			slider.remove();
+		    }
+		    if (!slidertitle.empty())  {
+			slidertitle.remove();
+		    }
+
+		    //Hist part
+		    if (choice=="hist") {
+			// Defined yAxis
+			yscale.domain([maxYhist, 0]).nice();
+			yAxis.scale(yscale);
+			gyAxis.call(yAxis);
+
+			// y Axis title
+			pdfgraph.append("text")
+			    .attr("transform-origin", "10 "+(innerH/2))
+			    .attr("class", "axisTitle ytitle")
+			    .attr("x", 10)
+			    .attr("y", innerH/2)
+			    .text("Count");
+
+			const barwidth = vslider;
+
+			const update_hist =
+			      plot_histogram(pdfgraph, data, barwidth, xscale, yscale);
+
+			//slider
+			control_container
+			    .insert("p")
+			    .attr("align", "center")
+			    .attr("id", "slidertitle-"+i)
+			    .text("Barwidth");
+
+			control_container
+			    .insert("svg")
+			    .attr("width", wsvg)
+			    .attr("height", hslider)
+			    .attr("id", "slider-"+i)
+			    .append("g")
+			    .attr("transform", "translate("+(wsvg-wslider)/2+",10)")
+			    .call(d3
+				  .sliderBottom()
+				  .min(min_slider)
+				  .max(max_slider)
+				  .width(wslider)
+				  .ticks(5, "s")
+				  .default(vslider)
+				  .fill("red")
+				  .on("onchange", (value) => {
+				      if (value > 0) {
+					  vslider=value;
+					  update_hist(vslider);}}));
+		    } else {
+			//Defined yAxis
+			yscale.domain([maxYkde, 0]).nice();
+			yAxis.scale(yscale);
+			gyAxis.call(yAxis);
+
+			// y Axis title
+			pdfgraph.append("text")
+			    .attr("transform-origin", "10 "+(innerH/2))
+			    .attr("class", "axisTitle ytitle")
+			    .attr("x", +10)
+			    .attr("y", innerH/2)
+			    .text("Density");
+
+			const bandwidth = vslider;
+			const update_kde = plot_kde(pdfgraph, data, bandwidth, xscale, yscale, x);
+
+			//slider
+			control_container.insert("p")
+			    .attr("align", "center")
+			    .attr("id", "slidertitle-"+i)
+			    .text("Bandwidth");
+
+			control_container.insert("svg")
+			    .attr("width", wsvg)
+			    .attr("height", hslider)
+			    .attr("id", "slider-"+i)
+			    .append("g")
+			    .attr("transform", "translate("+(wsvg-wslider)/2+",10)")
+			    .call(d3
+				  .sliderBottom()
+				  .min(min_slider)
+				  .max(max_slider)
+				  .width(wslider)
+				  .ticks(5, "s")
+				  .default(vslider)
+				  .fill("red")
+				  .on("onchange", (value) =>
+				      {if (value > 0) { vslider=value; update_kde(vslider);}}));
+		    }; // end else
+		}; // end function
+	    }; //end else (available kde data)
+	}); //end function // end each
+    }; //end if
+
+
+
+function plot_summarize_bar_graph(container, inputs) {
+
+    const hbar = d3.min([60*inputs.series.length, hsvg]);
+    const innerHbar = hbar - marginbar.top - marginbar.bottom;
+
+    const xb = d3.scaleLinear()
+	  .range([0, innerWbar])
+	  .domain([0, d3.max(inputs.series, serie => serie.result.estimate)])
+	  .nice();
+    const yb = d3.scaleBand()
+	  .range([0, innerHbar])
+	  .padding(0.2)
+	  .domain(inputs.series.map(serie => serie.name));
+    const xbAxis = d3.axisBottom()
+	  .scale(xb)
+	  .ticks(8, "s");
+    const ybAxis = d3.axisLeft()
+	  .scale(yb);
+
+    const bargraph =
+	container.append("svg")
+	.attr("width", wbar)
+	.attr("height", hbar);
+
+    // background
+    bargraph.append("rect")
+  	.attr("x", marginbar.left)
+  	.attr("y", marginbar.top)
+  	.attr("width", innerWbar)
+  	.attr("height", innerHbar)
+  	.attr("class", "background axis");
+    // x Axis
+    bargraph.append("g")
+	.attr("transform","translate("+marginbar.left+","+(hbar-marginbar.bottom)+")")
+	.attr("class", "axis")
+	.call(xbAxis);
+    // x axis title
+    bargraph.append("text")
+	.attr("class", "axisTitle")
+	.attr("x", wbar/2)
+	.attr("y", hbar-10)
+	.text("Estimated "+inputs.yLabel);
+    // y Axis
+    bargraph.append("g")
+	.attr("transform","translate("+marginbar.left+","+marginbar.bottom+")")
+	.attr("class", "axis")
+	.call(ybAxis);
+
+    // Bargraph
+    bargraph.append("g")
+	.attr("transform","translate("+marginbar.left+","+marginbar.top+")")
+	.selectAll(".bar")
+   	.data(inputs.series)
+	.enter()
+	.append("rect")
+	.attr("class", "bar")
+	.attr("y", serie => yb(serie.name))
+	.attr("height", yb.bandwidth)
+	.attr("x", serie => 0)
+	.attr("width", serie => xb(serie.result.estimate))
+	.attr("fill", "#4ECDC4")
+	.on("mouseover", function (serie) {
+	    // Specify where to put label of text
+	    bargraph.append("text")
+		.attr("class", "axisTitle")
+		.attr("id", "tt")
+		.attr("x", wbar-200)
+		.attr("y", marginbar.top-10)
+		.text("Value: "+d3.format(".4s")(serie.result.estimate));
+	})
+        .on("mouseout", function (serie) {
+	    // Select text by id and then remove
+	    d3.selectAll("#tt").transition().duration("50").remove();
+	});
+
+};
+
+// [histrogram (data, barwidth, min, max)] computes histogram
+// values as follows:
+// - a value [v] of [data] contributes to the bar between [u] and
+// [u+barwidth] if u <= v < u+barwidth
+// - the [i]th bar is between [min+i*barwidth] and [min+(i+1)*barwidth]
+// - [max] is used only to determine the number of bars. It MUST be greater
+// than [d3.max(data)]
+function histogram(data, barwidth, min, max) {
+    const nbar = Math.floor((max-min)/barwidth)+1;
+    let hist = new Array(nbar);
+    for (let i=0; i<nbar; i++) {
+	hist[i]=0;
+    }
+
+    data.forEach(function(v) {
+	const ind = Math.floor((v-min)/barwidth);
+	hist[ind] ++;
+    });
+
+    let n = data.length;
+    for (let i=0; i<nbar; i++) {
+	hist[i] = hist[i];
+    }
+
+    return hist;
+}
+
+// [plot_histogram(container, data, bandwidth, xscale, yscale)]
+// draws the histogram computes with
+// [histogram(data, barwidth, d3.min(data), d3.max(data)]
+// in the html element [container].
+//
+// Axis are already defined on [container], using [xscale] and [yscale].
+//
+// In addition, this function returns the update function
+// that redraw the bar if called with a new barwidth.
+function plot_histogram(container, data, barwidth, xscale, yscale) {
+    const min = d3.min(data),
+	  max = d3.max(data);
+    const hist = histogram(data, barwidth, min, max);
+    const sample_nb = data.length;
+
+    const print_value = function (v) {
+	container.append("text")
+	    .attr("class", "axisTitle")
+	    .attr("id", "tt2")
+	    .attr("x", wsvg-170)
+	    .attr("y", 20)
+	    .text("Value: "+d3.format("d")(v)+" / "+d3.format("d")(sample_nb));};
+
+    const rects = container
+	  .selectAll(".bar")
+   	  .data(hist)
+	  .enter();
+
+    rects.append("rect")
+	.attr("class", "bar")
+	.attr("x", (v, i) => xscale(i*barwidth+min))
+	.attr("width", (v, i) => xscale(barwidth)-xscale(0))
+	.attr("y", (v, i) => yscale(v))
+	.attr("height", (v, i) => innerH-yscale(v))
+	.on("mouseover", print_value)
+        .on("mouseout", () => d3.selectAll("#tt2").transition().duration("50").remove());
+
+    function update_hist(nbarwidth) {
+	//compute new histograph values
+	const nhist = histogram(data, nbarwidth, min, max);
+
+	const rects = container
+	      .selectAll(".bar")
+   	      .data(nhist);
+
+	rects.exit().remove();
+
+	rects.enter().append("rect").attr("class", "bar")
+	    .merge(rects)
+	    .attr("x", (v, i) => xscale(i*nbarwidth+min))
+	    .attr("width", (v, i) => xscale(nbarwidth)-xscale(0))
+	    .attr("y", (v, i) => yscale(v))
+	    .attr("height", (v, i) => innerH-yscale(v))
+	    .on("mouseover", print_value)
+            .on("mouseout", () => d3.selectAll("#tt2").transition().duration("50").remove());
+    }
+    return update_hist;
+};
+
+// [kernelDensityEstimation(data, bandwith] returns the function x -> kde(x)
+//    for [data]. The kernel function used is a gaussian.
+function kernelDensityEstimation(X, bandwidth) {
+    //gaussian constante
+    const a = 1/(2*bandwidth*bandwidth);
+    const b = bandwidth * SQRT_2PI;
+    const gaussianKernel =
+	  function (x) {
+	      return Math.exp(-a * x * x) / b;
+	  };
+
+    return function (x) {
+        let i = 0;
+        let sum = 0;
+        for (i = 0; i < X.length; i++) {
+	    sum += gaussianKernel(x - X[i])/X.length;
+        }
+	return sum ;
+    };
+}
+
+// [plot_kde(container, data, bandwidth, xscale, yscale, x)] draws
+// the kde function computes with [kde(data, bandwidth)]
+// for the abscisse values defined by [x], in the html element
+// [container].
+//
+// Axis are already defined on [container], using [xscale] and
+// [yscale].
+//
+// In addition, this function returns the update function that
+// redraw the curve if called with a new bandwidth.
+function plot_kde(container, data, bandwidth, xscale, yscale, x) {
+    const n = x.length;
+    const kde = kernelDensityEstimation(data, bandwidth);
+    const density = new Array(n);
+
+    for (let i=0; i<n;i++){
+	let tmp = x[i] ;
+	density[i] = [tmp, kde(tmp)];
+    }
+
+    const graph = container
+	  .append('g')
+	  .append("path")
+	  .attr("class", "mypath")
+	  .datum(density)
+	  .attr("fill", "#4ECDC4")
+	  .attr("opacity", ".8")
+	  .attr("stroke", "#292F36")
+	  .attr("stroke-width", 1)
+	  .attr("stroke-linejoin", "round")
+	  .attr("d",
+		d3.line()
+		.curve(d3.curveBasis)
+		.x(d => xscale(d[0]))
+		.y(d => yscale(d[1])));
+
+    function update_kde(nbandwidth) {
+	let kde = kernelDensityEstimation(data, nbandwidth);
+
+	for (let i=0; i<n;i++){
+	    density[i][1] = kde(density[i][0]);
+	}
+
+	graph.datum(density)
+	    .transition()
+	    .duration(50)
+	    .attr("d",
+		  d3.line()
+		  .curve(d3.curveBasis)
+		  .x(d => xscale(d[0]))
+		  .y(d => yscale(d[1])));
+    };
+
+    return update_kde;
+};
+
+};
+
+
+var contents = null;
+contents = {"xLabel":"run","yLabel":"monotonic-clock","series":[{"name":"ke/Fke.push & Fke.pop:100","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":416,"time":1002263317},"dataset":[{"x":1,"y":8042},{"x":2,"y":12796},{"x":3,"y":17723},{"x":4,"y":23575},{"x":5,"y":28438},{"x":6,"y":37398},{"x":7,"y":43747},{"x":8,"y":55105},{"x":9,"y":61133},{"x":10,"y":65397},{"x":11,"y":72421},{"x":12,"y":76722},{"x":13,"y":114598},{"x":14,"y":88533},{"x":15,"y":93560},{"x":16,"y":100443},{"x":17,"y":107406},{"x":18,"y":111235},{"x":19,"y":114130},{"x":20,"y":131321},{"x":21,"y":128184},{"x":22,"y":160702},{"x":23,"y":136442},{"x":24,"y":144874},{"x":25,"y":148223},{"x":26,"y":183530},{"x":27,"y":158171},{"x":28,"y":161906},{"x":29,"y":170824},{"x":30,"y":174566},{"x":31,"y":177734},{"x":32,"y":223079},{"x":33,"y":188550},{"x":34,"y":197363},{"x":35,"y":199061},{"x":36,"y":206537},{"x":37,"y":212542},{"x":38,"y":241236},{"x":39,"y":226620},{"x":40,"y":226732},{"x":41,"y":233085},{"x":42,"y":237622},{"x":43,"y":266619},{"x":44,"y":247375},{"x":45,"y":255660},{"x":46,"y":309082},{"x":47,"y":267618},{"x":48,"y":269606},{"x":49,"y":274009},{"x":50,"y":282876},{"x":51,"y":284266},{"x":52,"y":291877},{"x":53,"y":296276},{"x":54,"y":307213},{"x":55,"y":308584},{"x":56,"y":311561},{"x":57,"y":318455},{"x":58,"y":323253},{"x":59,"y":329933},{"x":60,"y":333075},{"x":61,"y":340832},{"x":62,"y":346118},{"x":63,"y":369181},{"x":64,"y":345979},{"x":65,"y":352030},{"x":66,"y":374979},{"x":67,"y":362001},{"x":68,"y":415211},{"x":69,"y":372796},{"x":70,"y":379374},{"x":71,"y":383484},{"x":72,"y":410057},{"x":73,"y":393480},{"x":74,"y":399908},{"x":75,"y":405479},{"x":76,"y":409775},{"x":77,"y":459275},{"x":78,"y":420616},{"x":79,"y":426826},{"x":80,"y":431924},{"x":81,"y":498555},{"x":82,"y":442104},{"x":83,"y":447592},{"x":84,"y":453230},{"x":85,"y":498053},{"x":86,"y":463082},{"x":87,"y":468970},{"x":88,"y":475602},{"x":89,"y":508636},{"x":90,"y":484293},{"x":91,"y":490599},{"x":92,"y":563043},{"x":93,"y":529077},{"x":94,"y":508659},{"x":95,"y":513181},{"x":96,"y":519357},{"x":97,"y":576720},{"x":98,"y":529909},{"x":99,"y":536736},{"x":100,"y":540835},{"x":101,"y":641085},{"x":102,"y":551061},{"x":103,"y":556170},{"x":104,"y":562114},{"x":105,"y":591604},{"x":106,"y":572825},{"x":107,"y":577266},{"x":108,"y":584720},{"x":109,"y":577994},{"x":110,"y":600319},{"x":111,"y":585906},{"x":112,"y":650822},{"x":113,"y":700197},{"x":114,"y":603880},{"x":115,"y":608416},{"x":116,"y":681623},{"x":117,"y":618180},{"x":118,"y":624182},{"x":119,"y":660642},{"x":120,"y":633853},{"x":121,"y":641051},{"x":122,"y":645151},{"x":123,"y":677744},{"x":124,"y":681431},{"x":125,"y":704762},{"x":126,"y":674119},{"x":127,"y":674692},{"x":128,"y":679520},{"x":129,"y":684516},{"x":130,"y":691719},{"x":131,"y":744319},{"x":132,"y":701353},{"x":133,"y":714266},{"x":134,"y":713082},{"x":135,"y":717039},{"x":136,"y":729576},{"x":137,"y":726469},{"x":138,"y":731007},{"x":139,"y":737203},{"x":140,"y":741894},{"x":141,"y":746705},{"x":142,"y":754177},{"x":143,"y":764919},{"x":144,"y":764313},{"x":145,"y":768040},{"x":146,"y":779298},{"x":147,"y":779698},{"x":148,"y":783939},{"x":149,"y":794313},{"x":150,"y":796374},{"x":151,"y":799490},{"x":152,"y":807637},{"x":153,"y":813603},{"x":154,"y":819457},{"x":155,"y":864349},{"x":156,"y":828924},{"x":157,"y":871884},{"x":158,"y":843321},{"x":159,"y":845349},{"x":160,"y":847923},{"x":161,"y":859512},{"x":162,"y":859587},{"x":163,"y":866443},{"x":164,"y":877908},{"x":165,"y":876525},{"x":166,"y":881810},{"x":167,"y":895091},{"x":168,"y":889461},{"x":169,"y":898369},{"x":170,"y":947441},{"x":171,"y":907085},{"x":172,"y":912459},{"x":173,"y":923206},{"x":174,"y":925041},{"x":175,"y":930860},{"x":176,"y":938700},{"x":177,"y":940221},{"x":178,"y":943669},{"x":179,"y":948279},{"x":180,"y":956141},{"x":181,"y":959658},{"x":182,"y":965456},{"x":183,"y":972982},{"x":184,"y":983719},{"x":185,"y":982551},{"x":186,"y":989211},{"x":187,"y":1000604},{"x":188,"y":1001141},{"x":189,"y":1004621},{"x":190,"y":1010917},{"x":191,"y":1028831},{"x":192,"y":1029503},{"x":193,"y":1073917},{"x":194,"y":1030583},{"x":195,"y":1042035},{"x":196,"y":1044227},{"x":197,"y":1047505},{"x":198,"y":1052490},{"x":199,"y":1058396},{"x":200,"y":1070710},{"x":202,"y":1073065},{"x":204,"y":1087325},{"x":206,"y":1096736},{"x":208,"y":1108326},{"x":210,"y":1121317},{"x":212,"y":1126880},{"x":214,"y":1142431},{"x":216,"y":1155620},{"x":218,"y":1165904},{"x":220,"y":1179722},{"x":222,"y":1183055},{"x":224,"y":1195462},{"x":226,"y":1209328},{"x":228,"y":1257798},{"x":230,"y":1230747},{"x":232,"y":1241212},{"x":234,"y":1254507},{"x":236,"y":1261789},{"x":238,"y":1275095},{"x":240,"y":1282745},{"x":242,"y":1292490},{"x":244,"y":1303403},{"x":246,"y":1407852},{"x":248,"y":1378465},{"x":250,"y":1336175},{"x":252,"y":1353337},{"x":254,"y":1358739},{"x":256,"y":1373380},{"x":258,"y":1376864},{"x":260,"y":1395616},{"x":262,"y":1398522},{"x":264,"y":1503550},{"x":266,"y":1419633},{"x":268,"y":1430496},{"x":270,"y":1440585},{"x":272,"y":1452180},{"x":274,"y":1463412},{"x":276,"y":1480852},{"x":278,"y":1495410},{"x":280,"y":1502499},{"x":282,"y":1607254},{"x":284,"y":1525761},{"x":286,"y":1535192},{"x":288,"y":1547456},{"x":290,"y":1555906},{"x":292,"y":1567575},{"x":294,"y":1576042},{"x":296,"y":1592122},{"x":298,"y":1684395},{"x":300,"y":1616644},{"x":303,"y":1627560},{"x":306,"y":1648793},{"x":309,"y":1663219},{"x":312,"y":1681594},{"x":315,"y":1693004},{"x":318,"y":1715353},{"x":321,"y":1786031},{"x":324,"y":1741573},{"x":327,"y":1755834},{"x":330,"y":1769907},{"x":333,"y":1792286},{"x":336,"y":1805147},{"x":339,"y":1833900},{"x":342,"y":1927377},{"x":345,"y":1864279},{"x":348,"y":1870559},{"x":351,"y":1891826},{"x":354,"y":1908771},{"x":357,"y":1919434},{"x":360,"y":1942520},{"x":363,"y":2042463},{"x":366,"y":1981747},{"x":369,"y":1993611},{"x":372,"y":2002364},{"x":375,"y":2030267},{"x":378,"y":2090812},{"x":381,"y":2048538},{"x":384,"y":2156201},{"x":387,"y":2083245},{"x":390,"y":2101171},{"x":393,"y":2117999},{"x":396,"y":2132228},{"x":399,"y":2160839},{"x":402,"y":2268050},{"x":406,"y":2199156},{"x":410,"y":2220226},{"x":414,"y":2242796},{"x":418,"y":2262590},{"x":422,"y":2280298},{"x":426,"y":2398202},{"x":430,"y":2331802},{"x":434,"y":2350480},{"x":438,"y":2375216},{"x":442,"y":2394311},{"x":446,"y":2412266},{"x":450,"y":2528218},{"x":454,"y":2463650},{"x":458,"y":2477507},{"x":462,"y":2501165},{"x":466,"y":2525505},{"x":470,"y":2551027},{"x":474,"y":2649896},{"x":478,"y":2580631},{"x":482,"y":2606226},{"x":486,"y":2627287},{"x":490,"y":2658648},{"x":494,"y":2759662},{"x":498,"y":2689361},{"x":502,"y":2716308},{"x":507,"y":2740882},{"x":512,"y":2817838},{"x":517,"y":2872518},{"x":522,"y":2817331},{"x":527,"y":2851309},{"x":532,"y":2881037},{"x":537,"y":2907386},{"x":542,"y":3009581},{"x":547,"y":2955265},{"x":552,"y":2977279},{"x":557,"y":3010269},{"x":562,"y":3035049},{"x":567,"y":3198288},{"x":572,"y":3088383},{"x":577,"y":3116153},{"x":582,"y":3140882},{"x":587,"y":3176764},{"x":592,"y":3279801},{"x":597,"y":3217859},{"x":602,"y":3244314},{"x":608,"y":3277433},{"x":614,"y":3510796},{"x":620,"y":3391150},{"x":626,"y":3421918},{"x":632,"y":3496816},{"x":638,"y":3547280},{"x":644,"y":3517579},{"x":650,"y":3501488},{"x":656,"y":3535500},{"x":662,"y":3568189},{"x":668,"y":3669695},{"x":674,"y":3631927},{"x":680,"y":3710669},{"x":686,"y":3700571},{"x":692,"y":3817374},{"x":698,"y":3752036},{"x":704,"y":3785107},{"x":711,"y":3827038},{"x":718,"y":3883603},{"x":725,"y":3897013},{"x":732,"y":3937175},{"x":739,"y":4067161},{"x":746,"y":4012218},{"x":753,"y":4050817},{"x":760,"y":4083169},{"x":767,"y":4207770},{"x":774,"y":4247661},{"x":781,"y":4239805},{"x":788,"y":4238883},{"x":795,"y":4362827},{"x":802,"y":4312433},{"x":810,"y":4359596},{"x":818,"y":4478093},{"x":826,"y":4441109},{"x":834,"y":4486713},{"x":842,"y":4642963},{"x":850,"y":4568582},{"x":858,"y":4619787},{"x":866,"y":4661525},{"x":874,"y":4789702},{"x":882,"y":4743663},{"x":890,"y":4832300},{"x":898,"y":4918802},{"x":906,"y":4879852},{"x":915,"y":4935988},{"x":924,"y":5071341},{"x":933,"y":5023301},{"x":942,"y":5081061},{"x":951,"y":5212965},{"x":960,"y":5177040},{"x":969,"y":5236513},{"x":978,"y":5363056},{"x":987,"y":5327572},{"x":996,"y":5377540},{"x":1005,"y":5504117},{"x":1015,"y":5521079},{"x":1025,"y":5547749},{"x":1035,"y":5617103},{"x":1045,"y":5646063},{"x":1055,"y":5777275},{"x":1065,"y":5744639},{"x":1075,"y":5795371},{"x":1085,"y":5938587},{"x":1095,"y":5907099},{"x":1105,"y":5961953},{"x":1116,"y":6068877},{"x":1127,"y":6068313},{"x":1138,"y":6230453},{"x":1149,"y":6191577},{"x":1160,"y":6245036},{"x":1171,"y":6395031},{"x":1182,"y":6501599},{"x":1193,"y":6519528},{"x":1204,"y":6477561},{"x":1216,"y":6640664},{"x":1228,"y":6609956},{"x":1240,"y":6677260},{"x":1252,"y":6818523},{"x":1264,"y":6802130},{"x":1276,"y":6956340},{"x":1288,"y":6926700},{"x":1300,"y":7121553},{"x":1313,"y":7057258},{"x":1326,"y":7152466},{"x":1339,"y":7264518},{"x":1352,"y":7277486},{"x":1365,"y":7427639}],"result":{"estimate":5423.877165670256,"r_square":0.9997156425933308}},{"name":"ke/Fke.push & Fke.pop:1000","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":159,"time":1001399713},"dataset":[{"x":1,"y":66620},{"x":2,"y":127877},{"x":3,"y":210731},{"x":4,"y":256035},{"x":5,"y":322756},{"x":6,"y":395870},{"x":7,"y":460263},{"x":8,"y":526095},{"x":9,"y":691089},{"x":10,"y":671794},{"x":11,"y":764768},{"x":12,"y":815892},{"x":13,"y":873774},{"x":14,"y":970790},{"x":15,"y":1030413},{"x":16,"y":1094299},{"x":17,"y":1163810},{"x":18,"y":1228056},{"x":19,"y":1316151},{"x":20,"y":1380474},{"x":21,"y":1444576},{"x":22,"y":1518620},{"x":23,"y":1586193},{"x":24,"y":1647060},{"x":25,"y":1733633},{"x":26,"y":1801896},{"x":27,"y":1866333},{"x":28,"y":1935217},{"x":29,"y":2090571},{"x":30,"y":2058664},{"x":31,"y":2118178},{"x":32,"y":2187952},{"x":33,"y":2268509},{"x":34,"y":2322881},{"x":35,"y":2443866},{"x":36,"y":2461012},{"x":37,"y":2518642},{"x":38,"y":2689136},{"x":39,"y":2709613},{"x":40,"y":2749698},{"x":41,"y":2791511},{"x":42,"y":2847808},{"x":43,"y":2912368},{"x":44,"y":3069445},{"x":45,"y":3050307},{"x":46,"y":3123980},{"x":47,"y":3173071},{"x":48,"y":3327352},{"x":49,"y":3315790},{"x":50,"y":3384441},{"x":51,"y":3451807},{"x":52,"y":3605401},{"x":53,"y":3574408},{"x":54,"y":3715673},{"x":55,"y":3728343},{"x":56,"y":3864106},{"x":57,"y":3869089},{"x":58,"y":4004077},{"x":59,"y":4017013},{"x":60,"y":4175194},{"x":61,"y":4123060},{"x":62,"y":4302728},{"x":63,"y":4351749},{"x":64,"y":4432157},{"x":65,"y":4450817},{"x":66,"y":4585875},{"x":67,"y":4562486},{"x":68,"y":4626196},{"x":69,"y":4777806},{"x":70,"y":4782699},{"x":71,"y":4852621},{"x":72,"y":5001722},{"x":73,"y":5002461},{"x":74,"y":5062918},{"x":75,"y":5204716},{"x":76,"y":5218797},{"x":77,"y":5332535},{"x":78,"y":5345986},{"x":79,"y":5428231},{"x":80,"y":5585563},{"x":81,"y":5554343},{"x":82,"y":5646658},{"x":83,"y":5750259},{"x":84,"y":5759769},{"x":85,"y":5897076},{"x":86,"y":5871745},{"x":87,"y":5968316},{"x":88,"y":6086557},{"x":89,"y":6081103},{"x":90,"y":6218718},{"x":91,"y":6205036},{"x":92,"y":6274043},{"x":93,"y":6337467},{"x":94,"y":6402609},{"x":95,"y":6566794},{"x":96,"y":6535549},{"x":97,"y":6704959},{"x":98,"y":6654271},{"x":99,"y":6805527},{"x":100,"y":6823405},{"x":101,"y":7053222},{"x":102,"y":6908748},{"x":103,"y":7022613},{"x":104,"y":7083446},{"x":105,"y":7115541},{"x":106,"y":7262620},{"x":107,"y":7233920},{"x":108,"y":7431887},{"x":109,"y":7362272},{"x":110,"y":7598554},{"x":111,"y":8271405},{"x":112,"y":8010362},{"x":113,"y":7722319},{"x":114,"y":7869302},{"x":115,"y":7764911},{"x":116,"y":7943082},{"x":117,"y":7950643},{"x":118,"y":7976736},{"x":119,"y":8154492},{"x":120,"y":8214507},{"x":121,"y":8291462},{"x":122,"y":8604433},{"x":123,"y":8452182},{"x":124,"y":8566665},{"x":125,"y":8632490},{"x":126,"y":8587241},{"x":127,"y":8662273},{"x":128,"y":8747845},{"x":129,"y":8721928},{"x":130,"y":8879920},{"x":131,"y":8851628},{"x":132,"y":9053405},{"x":133,"y":9009934},{"x":134,"y":9065872},{"x":135,"y":9205941},{"x":136,"y":9235760},{"x":137,"y":9354821},{"x":138,"y":9463708},{"x":139,"y":9423884},{"x":140,"y":9718065},{"x":141,"y":9630668},{"x":142,"y":9760369},{"x":143,"y":9859543},{"x":144,"y":9771009},{"x":145,"y":9920471},{"x":146,"y":10018262},{"x":147,"y":10116005},{"x":148,"y":10152560},{"x":149,"y":10203641},{"x":150,"y":10183887},{"x":151,"y":10397311},{"x":152,"y":10544576},{"x":153,"y":10416498},{"x":154,"y":10645736},{"x":155,"y":10690359},{"x":156,"y":10594994},{"x":157,"y":10826391},{"x":158,"y":10827630},{"x":159,"y":10850963}],"result":{"estimate":68576.14780933934,"r_square":0.99934699371591}},{"name":"ke/Fke.push & Fke.pop:10000","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":42,"time":1033899639},"dataset":[{"x":1,"y":1089695},{"x":2,"y":2090043},{"x":3,"y":2941796},{"x":4,"y":4181774},{"x":5,"y":5137883},{"x":6,"y":6116121},{"x":7,"y":7173153},{"x":8,"y":8237469},{"x":9,"y":9460696},{"x":10,"y":10497292},{"x":11,"y":11427949},{"x":12,"y":12571926},{"x":13,"y":13626393},{"x":14,"y":14723714},{"x":15,"y":15661413},{"x":16,"y":16762396},{"x":17,"y":17677803},{"x":18,"y":18987374},{"x":19,"y":20149156},{"x":20,"y":21170986},{"x":21,"y":22252461},{"x":22,"y":23254870},{"x":23,"y":24455772},{"x":24,"y":25270474},{"x":25,"y":26340310},{"x":26,"y":27308360},{"x":27,"y":28817711},{"x":28,"y":29468972},{"x":29,"y":30546268},{"x":30,"y":31590025},{"x":31,"y":32524969},{"x":32,"y":33648991},{"x":33,"y":34729399},{"x":34,"y":35795574},{"x":35,"y":36739108},{"x":36,"y":37910687},{"x":37,"y":39003540},{"x":38,"y":39976569},{"x":39,"y":41367478},{"x":40,"y":42454785},{"x":41,"y":43376437},{"x":42,"y":44339743}],"result":{"estimate":1054422.332538597,"r_square":0.9998844693154777}},{"name":"ke/Fke.push & Fke.pop:500","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":229,"time":1005168725},"dataset":[{"x":1,"y":34016},{"x":2,"y":62305},{"x":3,"y":93539},{"x":4,"y":123315},{"x":5,"y":153042},{"x":6,"y":183013},{"x":7,"y":212897},{"x":8,"y":243385},{"x":9,"y":305619},{"x":10,"y":302203},{"x":11,"y":336024},{"x":12,"y":365850},{"x":13,"y":422913},{"x":14,"y":425678},{"x":15,"y":454264},{"x":16,"y":543962},{"x":17,"y":666136},{"x":18,"y":615066},{"x":19,"y":659815},{"x":20,"y":608604},{"x":21,"y":639699},{"x":22,"y":680360},{"x":23,"y":701294},{"x":24,"y":732954},{"x":25,"y":770230},{"x":26,"y":791512},{"x":27,"y":820249},{"x":28,"y":857750},{"x":29,"y":886063},{"x":30,"y":921468},{"x":31,"y":1060344},{"x":32,"y":1099480},{"x":33,"y":1126955},{"x":34,"y":1108597},{"x":35,"y":1072914},{"x":36,"y":1099993},{"x":37,"y":1133778},{"x":38,"y":1162796},{"x":39,"y":1199846},{"x":40,"y":1224390},{"x":41,"y":1270771},{"x":42,"y":1287747},{"x":43,"y":1322305},{"x":44,"y":1347067},{"x":45,"y":1398062},{"x":46,"y":1408792},{"x":47,"y":1446558},{"x":48,"y":1470562},{"x":49,"y":1496894},{"x":50,"y":1578152},{"x":51,"y":1563426},{"x":52,"y":1604805},{"x":53,"y":1639265},{"x":54,"y":1661847},{"x":55,"y":1710606},{"x":56,"y":1819796},{"x":57,"y":1849995},{"x":58,"y":1780318},{"x":59,"y":1834909},{"x":60,"y":1859052},{"x":61,"y":1877678},{"x":62,"y":1915561},{"x":63,"y":1965425},{"x":64,"y":2053808},{"x":65,"y":2008313},{"x":66,"y":2057865},{"x":67,"y":2078248},{"x":68,"y":2114330},{"x":69,"y":2150606},{"x":70,"y":2281915},{"x":71,"y":2190465},{"x":72,"y":2246062},{"x":73,"y":2283712},{"x":74,"y":2305095},{"x":75,"y":2382461},{"x":76,"y":2353145},{"x":77,"y":2410983},{"x":78,"y":2698701},{"x":79,"y":2724221},{"x":80,"y":2766829},{"x":81,"y":2504901},{"x":82,"y":2563465},{"x":83,"y":2609386},{"x":84,"y":2676395},{"x":85,"y":2647292},{"x":86,"y":2680123},{"x":87,"y":2736053},{"x":88,"y":2772961},{"x":89,"y":2776114},{"x":90,"y":2905150},{"x":91,"y":2846867},{"x":92,"y":2867783},{"x":93,"y":2895684},{"x":94,"y":2937636},{"x":95,"y":3050549},{"x":96,"y":2994436},{"x":97,"y":3070231},{"x":98,"y":3051956},{"x":99,"y":3093925},{"x":100,"y":3121790},{"x":101,"y":3151577},{"x":102,"y":3199933},{"x":103,"y":3226851},{"x":104,"y":3333912},{"x":105,"y":3295767},{"x":106,"y":3356791},{"x":107,"y":3370250},{"x":108,"y":3475176},{"x":109,"y":3429302},{"x":110,"y":3465935},{"x":111,"y":3497591},{"x":112,"y":3613675},{"x":113,"y":3545651},{"x":114,"y":3591907},{"x":115,"y":3624535},{"x":116,"y":3755043},{"x":117,"y":3683246},{"x":118,"y":3738094},{"x":119,"y":3721634},{"x":120,"y":3853590},{"x":121,"y":3804183},{"x":122,"y":3825723},{"x":123,"y":3865197},{"x":124,"y":3893598},{"x":125,"y":3963435},{"x":126,"y":3997048},{"x":127,"y":4116256},{"x":128,"y":4083989},{"x":129,"y":4087252},{"x":130,"y":4093293},{"x":131,"y":4176318},{"x":132,"y":4144822},{"x":133,"y":4181901},{"x":134,"y":4520222},{"x":135,"y":4231194},{"x":136,"y":4264537},{"x":137,"y":4383075},{"x":138,"y":4338189},{"x":139,"y":4360370},{"x":140,"y":4395271},{"x":141,"y":4519530},{"x":142,"y":4446278},{"x":143,"y":4513189},{"x":144,"y":4611946},{"x":145,"y":4593424},{"x":146,"y":4581112},{"x":147,"y":4717340},{"x":148,"y":4642164},{"x":149,"y":4696393},{"x":150,"y":4838186},{"x":151,"y":4735032},{"x":152,"y":4781647},{"x":153,"y":4871596},{"x":154,"y":4852500},{"x":155,"y":5425802},{"x":156,"y":5329793},{"x":157,"y":4942099},{"x":158,"y":4967497},{"x":159,"y":5063225},{"x":160,"y":5014345},{"x":161,"y":5053310},{"x":162,"y":5435211},{"x":163,"y":5183184},{"x":164,"y":5186712},{"x":165,"y":5276538},{"x":166,"y":5204518},{"x":167,"y":5239271},{"x":168,"y":5346493},{"x":169,"y":5315508},{"x":170,"y":5373863},{"x":171,"y":5352137},{"x":172,"y":5394098},{"x":173,"y":5513637},{"x":174,"y":5459554},{"x":175,"y":5478121},{"x":176,"y":5627821},{"x":177,"y":5558341},{"x":178,"y":5591023},{"x":179,"y":5699545},{"x":180,"y":5862554},{"x":181,"y":5867095},{"x":182,"y":5823035},{"x":183,"y":5744505},{"x":184,"y":5892070},{"x":185,"y":5808132},{"x":186,"y":5939446},{"x":187,"y":5863099},{"x":188,"y":5886626},{"x":189,"y":6014019},{"x":190,"y":5962959},{"x":191,"y":6076998},{"x":192,"y":6020361},{"x":193,"y":6057103},{"x":194,"y":6165675},{"x":195,"y":6109003},{"x":196,"y":6295612},{"x":197,"y":6226549},{"x":198,"y":6253778},{"x":199,"y":6239503},{"x":200,"y":6281079},{"x":202,"y":6501415},{"x":204,"y":6383752},{"x":206,"y":6539050},{"x":208,"y":6528416},{"x":210,"y":6588431},{"x":212,"y":6743874},{"x":214,"y":6734022},{"x":216,"y":6849430},{"x":218,"y":6811424},{"x":220,"y":6970100},{"x":222,"y":6952745},{"x":224,"y":7185806},{"x":226,"y":7147385},{"x":228,"y":7224650},{"x":230,"y":7188959},{"x":232,"y":7336407},{"x":234,"y":8140448},{"x":236,"y":7711526},{"x":238,"y":7426209},{"x":240,"y":7590003},{"x":242,"y":7554706},{"x":244,"y":7703737},{"x":246,"y":7672781},{"x":248,"y":7971520},{"x":250,"y":7795634},{"x":252,"y":8003599},{"x":254,"y":7912158},{"x":256,"y":8071101},{"x":258,"y":8054843}],"result":{"estimate":31687.57386401257,"r_square":0.9983068921013787}},{"name":"ke/Fke.push & Fke.pop:5000","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":67,"time":1013622918},"dataset":[{"x":1,"y":330639},{"x":2,"y":805949},{"x":3,"y":1072304},{"x":4,"y":1500647},{"x":5,"y":1888303},{"x":6,"y":2311356},{"x":7,"y":2913085},{"x":8,"y":3410933},{"x":9,"y":3780288},{"x":10,"y":4065318},{"x":11,"y":4219197},{"x":12,"y":4921506},{"x":13,"y":5200354},{"x":14,"y":5773475},{"x":15,"y":6177505},{"x":16,"y":6207858},{"x":17,"y":7005761},{"x":18,"y":7219199},{"x":19,"y":7591119},{"x":20,"y":8346652},{"x":21,"y":8439148},{"x":22,"y":9172878},{"x":23,"y":9606048},{"x":24,"y":9774301},{"x":25,"y":9845173},{"x":26,"y":10616634},{"x":27,"y":11039695},{"x":28,"y":11158947},{"x":29,"y":11754152},{"x":30,"y":11841830},{"x":31,"y":12698118},{"x":32,"y":12924453},{"x":33,"y":13089687},{"x":34,"y":13349391},{"x":35,"y":13819582},{"x":36,"y":14173687},{"x":37,"y":14556223},{"x":38,"y":14968764},{"x":39,"y":15353675},{"x":40,"y":16846874},{"x":41,"y":16735419},{"x":42,"y":17324133},{"x":43,"y":16906650},{"x":44,"y":17537433},{"x":45,"y":18421748},{"x":46,"y":18565206},{"x":47,"y":19511083},{"x":48,"y":19837580},{"x":49,"y":19772796},{"x":50,"y":19926753},{"x":51,"y":20464474},{"x":52,"y":21492929},{"x":53,"y":21427085},{"x":54,"y":21613684},{"x":55,"y":21888722},{"x":56,"y":22397199},{"x":57,"y":23692908},{"x":58,"y":23881568},{"x":59,"y":23939576},{"x":60,"y":24529086},{"x":61,"y":25243327},{"x":62,"y":25370578},{"x":63,"y":25742099},{"x":64,"y":26116287},{"x":65,"y":27173885},{"x":66,"y":27961586},{"x":67,"y":27502461}],"result":{"estimate":407039.5226514486,"r_square":0.9983948292476059}},{"name":"ke/Queue.push & Queue.pop:100","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":476,"time":1002207375},"dataset":[{"x":1,"y":2261},{"x":2,"y":3473},{"x":3,"y":4935},{"x":4,"y":6291},{"x":5,"y":7723},{"x":6,"y":9353},{"x":7,"y":10482},{"x":8,"y":12007},{"x":9,"y":13553},{"x":10,"y":14891},{"x":11,"y":16427},{"x":12,"y":17781},{"x":13,"y":19198},{"x":14,"y":20504},{"x":15,"y":22148},{"x":16,"y":23518},{"x":17,"y":24902},{"x":18,"y":26323},{"x":19,"y":27773},{"x":20,"y":29131},{"x":21,"y":30595},{"x":22,"y":32732},{"x":23,"y":33407},{"x":24,"y":34883},{"x":25,"y":36286},{"x":26,"y":37682},{"x":27,"y":39173},{"x":28,"y":40470},{"x":29,"y":43115},{"x":30,"y":46887},{"x":31,"y":44876},{"x":32,"y":46229},{"x":33,"y":47711},{"x":34,"y":49036},{"x":35,"y":50506},{"x":36,"y":52059},{"x":37,"y":53486},{"x":38,"y":54717},{"x":39,"y":56201},{"x":40,"y":57528},{"x":41,"y":59220},{"x":42,"y":60588},{"x":43,"y":62056},{"x":44,"y":63393},{"x":45,"y":64795},{"x":46,"y":66428},{"x":47,"y":95223},{"x":48,"y":69000},{"x":49,"y":70470},{"x":50,"y":71838},{"x":51,"y":75218},{"x":52,"y":76674},{"x":53,"y":76282},{"x":54,"y":79767},{"x":55,"y":81120},{"x":56,"y":82659},{"x":57,"y":82100},{"x":58,"y":83640},{"x":59,"y":86957},{"x":60,"y":86360},{"x":61,"y":89751},{"x":62,"y":89063},{"x":63,"y":90632},{"x":64,"y":92068},{"x":65,"y":93654},{"x":66,"y":94805},{"x":67,"y":98654},{"x":68,"y":97719},{"x":69,"y":99378},{"x":70,"y":100523},{"x":71,"y":119896},{"x":72,"y":103321},{"x":73,"y":107480},{"x":74,"y":106376},{"x":75,"y":107700},{"x":76,"y":109275},{"x":77,"y":110565},{"x":78,"y":112171},{"x":79,"y":113434},{"x":80,"y":114968},{"x":81,"y":119157},{"x":82,"y":120771},{"x":83,"y":119244},{"x":84,"y":126301},{"x":85,"y":122303},{"x":86,"y":123455},{"x":87,"y":125048},{"x":88,"y":129463},{"x":89,"y":127846},{"x":90,"y":129340},{"x":91,"y":130832},{"x":92,"y":132171},{"x":93,"y":133619},{"x":94,"y":138288},{"x":95,"y":139828},{"x":96,"y":137854},{"x":97,"y":139356},{"x":98,"y":144184},{"x":99,"y":143161},{"x":100,"y":143575},{"x":101,"y":144862},{"x":102,"y":146538},{"x":103,"y":148006},{"x":104,"y":149500},{"x":105,"y":154461},{"x":106,"y":172138},{"x":107,"y":153521},{"x":108,"y":155001},{"x":109,"y":160434},{"x":110,"y":161352},{"x":111,"y":163665},{"x":112,"y":160879},{"x":113,"y":163678},{"x":114,"y":163609},{"x":115,"y":169263},{"x":116,"y":166512},{"x":117,"y":169125},{"x":118,"y":172948},{"x":119,"y":171888},{"x":120,"y":172941},{"x":121,"y":177964},{"x":122,"y":175005},{"x":123,"y":178030},{"x":124,"y":177758},{"x":125,"y":180413},{"x":126,"y":183124},{"x":127,"y":182143},{"x":128,"y":183696},{"x":129,"y":188370},{"x":130,"y":192548},{"x":131,"y":187927},{"x":132,"y":194030},{"x":133,"y":191859},{"x":134,"y":193284},{"x":135,"y":194685},{"x":136,"y":196312},{"x":137,"y":197547},{"x":138,"y":199243},{"x":139,"y":199374},{"x":140,"y":202001},{"x":141,"y":203209},{"x":142,"y":203652},{"x":143,"y":204919},{"x":144,"y":206459},{"x":145,"y":213081},{"x":146,"y":214694},{"x":147,"y":210732},{"x":148,"y":218939},{"x":149,"y":217031},{"x":150,"y":233753},{"x":151,"y":216857},{"x":152,"y":217953},{"x":153,"y":219384},{"x":154,"y":220810},{"x":155,"y":222081},{"x":156,"y":223585},{"x":157,"y":230624},{"x":158,"y":231944},{"x":159,"y":238473},{"x":160,"y":229374},{"x":161,"y":248934},{"x":162,"y":238072},{"x":163,"y":239812},{"x":164,"y":235087},{"x":165,"y":239313},{"x":166,"y":238005},{"x":167,"y":240752},{"x":168,"y":240946},{"x":169,"y":242062},{"x":170,"y":243463},{"x":171,"y":251099},{"x":172,"y":259335},{"x":173,"y":251558},{"x":174,"y":252824},{"x":175,"y":257266},{"x":176,"y":252227},{"x":177,"y":253624},{"x":178,"y":255094},{"x":179,"y":256490},{"x":180,"y":257697},{"x":181,"y":259469},{"x":182,"y":260739},{"x":183,"y":262254},{"x":184,"y":263638},{"x":185,"y":271090},{"x":186,"y":266233},{"x":187,"y":269074},{"x":188,"y":269418},{"x":189,"y":277625},{"x":190,"y":279022},{"x":191,"y":307873},{"x":192,"y":275033},{"x":193,"y":301591},{"x":194,"y":277898},{"x":195,"y":289150},{"x":196,"y":284241},{"x":197,"y":282123},{"x":198,"y":283696},{"x":199,"y":292529},{"x":200,"y":291783},{"x":202,"y":292350},{"x":204,"y":299676},{"x":206,"y":298654},{"x":208,"y":298831},{"x":210,"y":314210},{"x":212,"y":304998},{"x":214,"y":306490},{"x":216,"y":317008},{"x":218,"y":312154},{"x":220,"y":321718},{"x":222,"y":318036},{"x":224,"y":320774},{"x":226,"y":323522},{"x":228,"y":329927},{"x":230,"y":329283},{"x":232,"y":339318},{"x":234,"y":336211},{"x":236,"y":337959},{"x":238,"y":349336},{"x":240,"y":343843},{"x":242,"y":346523},{"x":244,"y":407150},{"x":246,"y":353262},{"x":248,"y":355936},{"x":250,"y":357856},{"x":252,"y":361815},{"x":254,"y":363787},{"x":256,"y":366488},{"x":258,"y":378873},{"x":260,"y":372282},{"x":262,"y":398059},{"x":264,"y":378047},{"x":266,"y":381875},{"x":268,"y":390348},{"x":270,"y":386571},{"x":272,"y":389431},{"x":274,"y":393295},{"x":276,"y":395166},{"x":278,"y":407906},{"x":280,"y":400671},{"x":282,"y":423169},{"x":284,"y":435366},{"x":286,"y":409303},{"x":288,"y":413585},{"x":290,"y":416455},{"x":292,"y":419377},{"x":294,"y":420848},{"x":296,"y":447762},{"x":298,"y":426436},{"x":300,"y":432237},{"x":303,"y":437393},{"x":306,"y":472029},{"x":309,"y":460391},{"x":312,"y":446278},{"x":315,"y":450739},{"x":318,"y":458595},{"x":321,"y":466523},{"x":324,"y":464728},{"x":327,"y":470053},{"x":330,"y":472015},{"x":333,"y":476740},{"x":336,"y":480889},{"x":339,"y":488600},{"x":342,"y":489613},{"x":345,"y":493476},{"x":348,"y":517360},{"x":351,"y":515192},{"x":354,"y":507955},{"x":357,"y":525719},{"x":360,"y":515418},{"x":363,"y":521375},{"x":366,"y":566587},{"x":369,"y":528012},{"x":372,"y":532209},{"x":375,"y":536745},{"x":378,"y":548863},{"x":381,"y":572107},{"x":384,"y":549400},{"x":387,"y":563658},{"x":390,"y":558603},{"x":393,"y":569061},{"x":396,"y":566903},{"x":399,"y":570833},{"x":402,"y":595130},{"x":406,"y":581009},{"x":410,"y":586444},{"x":414,"y":592497},{"x":418,"y":599288},{"x":422,"y":632157},{"x":426,"y":609404},{"x":430,"y":616355},{"x":434,"y":624165},{"x":438,"y":626760},{"x":442,"y":632541},{"x":446,"y":645216},{"x":450,"y":643483},{"x":454,"y":649207},{"x":458,"y":655186},{"x":462,"y":662356},{"x":466,"y":667000},{"x":470,"y":680839},{"x":474,"y":678338},{"x":478,"y":684693},{"x":482,"y":690129},{"x":486,"y":696576},{"x":490,"y":745915},{"x":494,"y":724285},{"x":498,"y":716128},{"x":502,"y":734680},{"x":507,"y":744076},{"x":512,"y":732472},{"x":517,"y":739679},{"x":522,"y":747664},{"x":527,"y":799397},{"x":532,"y":771263},{"x":537,"y":768223},{"x":542,"y":778367},{"x":547,"y":782325},{"x":552,"y":796493},{"x":557,"y":796829},{"x":562,"y":813175},{"x":567,"y":854701},{"x":572,"y":820443},{"x":577,"y":826329},{"x":582,"y":938135},{"x":587,"y":840913},{"x":592,"y":849921},{"x":597,"y":854003},{"x":602,"y":860936},{"x":608,"y":899653},{"x":614,"y":878206},{"x":620,"y":893202},{"x":626,"y":895332},{"x":632,"y":903754},{"x":638,"y":912718},{"x":644,"y":922507},{"x":650,"y":989789},{"x":656,"y":942329},{"x":662,"y":966188},{"x":668,"y":955441},{"x":674,"y":1028475},{"x":680,"y":972598},{"x":686,"y":983246},{"x":692,"y":989470},{"x":698,"y":1008607},{"x":704,"y":1012269},{"x":711,"y":1016564},{"x":718,"y":1026432},{"x":725,"y":1037999},{"x":732,"y":1070084},{"x":739,"y":1064207},{"x":746,"y":1070192},{"x":753,"y":1082002},{"x":760,"y":1088853},{"x":767,"y":1097552},{"x":774,"y":1136428},{"x":781,"y":1120623},{"x":788,"y":1151169},{"x":795,"y":1136673},{"x":802,"y":1161569},{"x":810,"y":1165512},{"x":818,"y":1169329},{"x":826,"y":1202116},{"x":834,"y":1193037},{"x":842,"y":1249831},{"x":850,"y":1228123},{"x":858,"y":1227753},{"x":866,"y":1253260},{"x":874,"y":1268264},{"x":882,"y":1269345},{"x":890,"y":1281828},{"x":898,"y":1310377},{"x":906,"y":1304493},{"x":915,"y":1318535},{"x":924,"y":1342987},{"x":933,"y":1346014},{"x":942,"y":1357046},{"x":951,"y":1425621},{"x":960,"y":1382689},{"x":969,"y":1399145},{"x":978,"y":1420457},{"x":987,"y":1423224},{"x":996,"y":1435441},{"x":1005,"y":1546855},{"x":1015,"y":1461034},{"x":1025,"y":1476451},{"x":1035,"y":1511951},{"x":1045,"y":1517265},{"x":1055,"y":1536684},{"x":1065,"y":1618243},{"x":1075,"y":1555623},{"x":1085,"y":1568820},{"x":1095,"y":1575667},{"x":1105,"y":1612905},{"x":1116,"y":1609471},{"x":1127,"y":1674079},{"x":1138,"y":1636792},{"x":1149,"y":1659366},{"x":1160,"y":1668115},{"x":1171,"y":1683839},{"x":1182,"y":1711732},{"x":1193,"y":1735169},{"x":1204,"y":1733635},{"x":1216,"y":1748063},{"x":1228,"y":1765989},{"x":1240,"y":1820574},{"x":1252,"y":1855273},{"x":1264,"y":1818139},{"x":1276,"y":1841940},{"x":1288,"y":1883454},{"x":1300,"y":1997703},{"x":1313,"y":1940082},{"x":1326,"y":1960521},{"x":1339,"y":1945048},{"x":1352,"y":2055295},{"x":1365,"y":2085245},{"x":1378,"y":2085389},{"x":1391,"y":2035537},{"x":1404,"y":2024518},{"x":1418,"y":2056137},{"x":1432,"y":2066499},{"x":1446,"y":2184097},{"x":1460,"y":2149907},{"x":1474,"y":2142690},{"x":1488,"y":2191870},{"x":1502,"y":2165150},{"x":1517,"y":2249265},{"x":1532,"y":2205806},{"x":1547,"y":2267501},{"x":1562,"y":2261002},{"x":1577,"y":2299759},{"x":1592,"y":2302013},{"x":1607,"y":2327812},{"x":1623,"y":2349935},{"x":1639,"y":2361071},{"x":1655,"y":2427732},{"x":1671,"y":2405960},{"x":1687,"y":2431733},{"x":1703,"y":2451882},{"x":1720,"y":2500616},{"x":1737,"y":2546812},{"x":1754,"y":2553540},{"x":1771,"y":2580486},{"x":1788,"y":2630541},{"x":1805,"y":2709714},{"x":1823,"y":2702756},{"x":1841,"y":2700866},{"x":1859,"y":2716236},{"x":1877,"y":2765289},{"x":1895,"y":2754225},{"x":1913,"y":2778175},{"x":1932,"y":2808320},{"x":1951,"y":2888508},{"x":1970,"y":2866613},{"x":1989,"y":2891050},{"x":2008,"y":2925770},{"x":2028,"y":2999069},{"x":2048,"y":2953787},{"x":2068,"y":2990056},{"x":2088,"y":3025209},{"x":2108,"y":3112593},{"x":2129,"y":3106598},{"x":2150,"y":3122144},{"x":2171,"y":3173187},{"x":2192,"y":3260845},{"x":2213,"y":3212385},{"x":2235,"y":3237079},{"x":2257,"y":3372402},{"x":2279,"y":3328409},{"x":2301,"y":3362893},{"x":2324,"y":3378823},{"x":2347,"y":3576784},{"x":2370,"y":3502712},{"x":2393,"y":3524637},{"x":2416,"y":3618475},{"x":2440,"y":3548664}],"result":{"estimate":1461.378388168849,"r_square":0.9995154475748519}},{"name":"ke/Queue.push & Queue.pop:1000","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":268,"time":1006687545},"dataset":[{"x":1,"y":15105},{"x":2,"y":29322},{"x":3,"y":43285},{"x":4,"y":58251},{"x":5,"y":73325},{"x":6,"y":87601},{"x":7,"y":102295},{"x":8,"y":115770},{"x":9,"y":131533},{"x":10,"y":145041},{"x":11,"y":159556},{"x":12,"y":174000},{"x":13,"y":211090},{"x":14,"y":203724},{"x":15,"y":217192},{"x":16,"y":231678},{"x":17,"y":247969},{"x":18,"y":261876},{"x":19,"y":338324},{"x":20,"y":328495},{"x":21,"y":295846},{"x":22,"y":316510},{"x":23,"y":324072},{"x":24,"y":377795},{"x":25,"y":362647},{"x":26,"y":382563},{"x":27,"y":390763},{"x":28,"y":415254},{"x":29,"y":420744},{"x":30,"y":504506},{"x":31,"y":446960},{"x":32,"y":463132},{"x":33,"y":479658},{"x":34,"y":492675},{"x":35,"y":505431},{"x":36,"y":520655},{"x":37,"y":535236},{"x":38,"y":550294},{"x":39,"y":564092},{"x":40,"y":579135},{"x":41,"y":598967},{"x":42,"y":609567},{"x":43,"y":622153},{"x":44,"y":637286},{"x":45,"y":649384},{"x":46,"y":665260},{"x":47,"y":680009},{"x":48,"y":702109},{"x":49,"y":708545},{"x":50,"y":723034},{"x":51,"y":738606},{"x":52,"y":750601},{"x":53,"y":772048},{"x":54,"y":782066},{"x":55,"y":796675},{"x":56,"y":809562},{"x":57,"y":825758},{"x":58,"y":848186},{"x":59,"y":878314},{"x":60,"y":871214},{"x":61,"y":880845},{"x":62,"y":898208},{"x":63,"y":913543},{"x":64,"y":925645},{"x":65,"y":939789},{"x":66,"y":959376},{"x":67,"y":970388},{"x":68,"y":980415},{"x":69,"y":1000791},{"x":70,"y":1014677},{"x":71,"y":1026434},{"x":72,"y":1130546},{"x":73,"y":1056361},{"x":74,"y":1066822},{"x":75,"y":1090657},{"x":76,"y":1100470},{"x":77,"y":1114388},{"x":78,"y":1163784},{"x":79,"y":1142597},{"x":80,"y":1156307},{"x":81,"y":1192900},{"x":82,"y":1193112},{"x":83,"y":1200584},{"x":84,"y":1262359},{"x":85,"y":1234928},{"x":86,"y":1244236},{"x":87,"y":1259270},{"x":88,"y":1280916},{"x":89,"y":1314724},{"x":90,"y":1295982},{"x":91,"y":1327388},{"x":92,"y":1347520},{"x":93,"y":1357143},{"x":94,"y":1372485},{"x":95,"y":1384645},{"x":96,"y":1408411},{"x":97,"y":1417103},{"x":98,"y":1428372},{"x":99,"y":1442415},{"x":100,"y":1457775},{"x":101,"y":1492909},{"x":102,"y":1486909},{"x":103,"y":1502555},{"x":104,"y":1516709},{"x":105,"y":1532252},{"x":106,"y":1636524},{"x":107,"y":1521182},{"x":108,"y":1527070},{"x":109,"y":1582639},{"x":110,"y":1603987},{"x":111,"y":1668865},{"x":112,"y":1632116},{"x":113,"y":1646950},{"x":114,"y":1661766},{"x":115,"y":1674919},{"x":116,"y":1676127},{"x":117,"y":1681344},{"x":118,"y":1678626},{"x":119,"y":1725270},{"x":120,"y":1697786},{"x":121,"y":1798934},{"x":122,"y":1733130},{"x":123,"y":1746879},{"x":124,"y":1760649},{"x":125,"y":1773751},{"x":126,"y":1826467},{"x":127,"y":1848680},{"x":128,"y":1863671},{"x":129,"y":1828021},{"x":130,"y":1884533},{"x":131,"y":2059813},{"x":132,"y":1938654},{"x":133,"y":1955809},{"x":134,"y":1960898},{"x":135,"y":1967241},{"x":136,"y":1980291},{"x":137,"y":1992974},{"x":138,"y":2009883},{"x":139,"y":2027837},{"x":140,"y":2174677},{"x":141,"y":2067378},{"x":142,"y":2084543},{"x":143,"y":2063176},{"x":144,"y":2112765},{"x":145,"y":2125767},{"x":146,"y":2144351},{"x":147,"y":2152327},{"x":148,"y":2172395},{"x":149,"y":2400443},{"x":150,"y":2216185},{"x":151,"y":2205845},{"x":152,"y":2222618},{"x":153,"y":2281795},{"x":154,"y":2249118},{"x":155,"y":2269283},{"x":156,"y":2284213},{"x":157,"y":2310574},{"x":158,"y":2305966},{"x":159,"y":2317170},{"x":160,"y":2339209},{"x":161,"y":2352223},{"x":162,"y":2358252},{"x":163,"y":2373627},{"x":164,"y":2384854},{"x":165,"y":2413663},{"x":166,"y":2463486},{"x":167,"y":2432405},{"x":168,"y":2454602},{"x":169,"y":2477752},{"x":170,"y":2491787},{"x":171,"y":2503400},{"x":172,"y":2523004},{"x":173,"y":2532738},{"x":174,"y":2587935},{"x":175,"y":2687562},{"x":176,"y":2650002},{"x":177,"y":2618607},{"x":178,"y":2675815},{"x":179,"y":2643226},{"x":180,"y":2659567},{"x":181,"y":2670399},{"x":182,"y":2687376},{"x":183,"y":2699398},{"x":184,"y":2714990},{"x":185,"y":2810178},{"x":186,"y":2741704},{"x":187,"y":2688805},{"x":188,"y":2706377},{"x":189,"y":2840552},{"x":190,"y":2805035},{"x":191,"y":2808812},{"x":192,"y":2821427},{"x":193,"y":2880450},{"x":194,"y":2856091},{"x":195,"y":2878501},{"x":196,"y":2887346},{"x":197,"y":2908752},{"x":198,"y":2921644},{"x":199,"y":2851707},{"x":200,"y":2905587},{"x":202,"y":2893127},{"x":204,"y":2978639},{"x":206,"y":2997901},{"x":208,"y":3064253},{"x":210,"y":3083730},{"x":212,"y":3105370},{"x":214,"y":3169142},{"x":216,"y":3149682},{"x":218,"y":3202921},{"x":220,"y":3285124},{"x":222,"y":3235679},{"x":224,"y":3300979},{"x":226,"y":3278153},{"x":228,"y":3358285},{"x":230,"y":3433044},{"x":232,"y":3441478},{"x":234,"y":3474270},{"x":236,"y":3414559},{"x":238,"y":3433912},{"x":240,"y":3516192},{"x":242,"y":3515593},{"x":244,"y":3523665},{"x":246,"y":3558913},{"x":248,"y":3626394},{"x":250,"y":3604935},{"x":252,"y":3637568},{"x":254,"y":3806755},{"x":256,"y":3696665},{"x":258,"y":3780403},{"x":260,"y":3791964},{"x":262,"y":3862496},{"x":264,"y":3939149},{"x":266,"y":4012649},{"x":268,"y":3992052},{"x":270,"y":4029626},{"x":272,"y":4103214},{"x":274,"y":4092679},{"x":276,"y":4007586},{"x":278,"y":4140920},{"x":280,"y":4173250},{"x":282,"y":4269035},{"x":284,"y":4207516},{"x":286,"y":4149353},{"x":288,"y":4182806},{"x":290,"y":4410775},{"x":292,"y":4362974},{"x":294,"y":4386248},{"x":296,"y":4405021},{"x":298,"y":4438715},{"x":300,"y":4504995},{"x":303,"y":4493142},{"x":306,"y":4570530},{"x":309,"y":4716982},{"x":312,"y":4670462},{"x":315,"y":4729324},{"x":318,"y":4800978},{"x":321,"y":4803847},{"x":324,"y":4934617},{"x":327,"y":4893694},{"x":330,"y":4932478},{"x":333,"y":5086624},{"x":336,"y":5020569},{"x":339,"y":5261898},{"x":342,"y":5148187},{"x":345,"y":5146769},{"x":348,"y":5234481},{"x":351,"y":5274033},{"x":354,"y":5325736}],"result":{"estimate":14805.45618318605,"r_square":0.9988244004207674}},{"name":"ke/Queue.push & Queue.pop:10000","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":95,"time":1007828955},"dataset":[{"x":1,"y":174762},{"x":2,"y":289177},{"x":3,"y":432096},{"x":4,"y":581771},{"x":5,"y":733091},{"x":6,"y":896140},{"x":7,"y":1149438},{"x":8,"y":1162833},{"x":9,"y":1484196},{"x":10,"y":1629304},{"x":11,"y":1771302},{"x":12,"y":1913029},{"x":13,"y":2052694},{"x":14,"y":2399711},{"x":15,"y":2545258},{"x":16,"y":2700003},{"x":17,"y":2832117},{"x":18,"y":3101920},{"x":19,"y":3252593},{"x":20,"y":3470121},{"x":21,"y":3532043},{"x":22,"y":3736874},{"x":23,"y":3952304},{"x":24,"y":4012596},{"x":25,"y":4174816},{"x":26,"y":4392884},{"x":27,"y":4565450},{"x":28,"y":4819380},{"x":29,"y":4872475},{"x":30,"y":5020203},{"x":31,"y":5662836},{"x":32,"y":5719374},{"x":33,"y":5951449},{"x":34,"y":6044737},{"x":35,"y":6238049},{"x":36,"y":6302740},{"x":37,"y":6526526},{"x":38,"y":6591580},{"x":39,"y":6840701},{"x":40,"y":7021007},{"x":41,"y":7159247},{"x":42,"y":7406362},{"x":43,"y":7461117},{"x":44,"y":8007754},{"x":45,"y":8051510},{"x":46,"y":8199752},{"x":47,"y":8409484},{"x":48,"y":8347883},{"x":49,"y":8697317},{"x":50,"y":8940859},{"x":51,"y":8988141},{"x":52,"y":9133848},{"x":53,"y":9550198},{"x":54,"y":9693803},{"x":55,"y":9922280},{"x":56,"y":10235087},{"x":57,"y":10490581},{"x":58,"y":10417098},{"x":59,"y":10657078},{"x":60,"y":10780983},{"x":61,"y":10818713},{"x":62,"y":11094516},{"x":63,"y":11514555},{"x":64,"y":11575373},{"x":65,"y":11772431},{"x":66,"y":11941474},{"x":67,"y":11889781},{"x":68,"y":11974760},{"x":69,"y":12369174},{"x":70,"y":12863464},{"x":71,"y":12983081},{"x":72,"y":13159404},{"x":73,"y":13266155},{"x":74,"y":13283947},{"x":75,"y":13769539},{"x":76,"y":13718311},{"x":77,"y":14058499},{"x":78,"y":14276495},{"x":79,"y":14498240},{"x":80,"y":14748173},{"x":81,"y":14686056},{"x":82,"y":14912726},{"x":83,"y":15376271},{"x":84,"y":15507454},{"x":85,"y":15554280},{"x":86,"y":15778598},{"x":87,"y":15748547},{"x":88,"y":15970430},{"x":89,"y":16226172},{"x":90,"y":16498793},{"x":91,"y":16651611},{"x":92,"y":16934146},{"x":93,"y":17589983},{"x":94,"y":17187357},{"x":95,"y":17348876}],"result":{"estimate":181112.7025799118,"r_square":0.9983100119841513}},{"name":"ke/Queue.push & Queue.pop:500","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":332,"time":1001876506},"dataset":[{"x":1,"y":7881},{"x":2,"y":14865},{"x":3,"y":21560},{"x":4,"y":28734},{"x":5,"y":36456},{"x":6,"y":42847},{"x":7,"y":50640},{"x":8,"y":58211},{"x":9,"y":64382},{"x":10,"y":72820},{"x":11,"y":80225},{"x":12,"y":86368},{"x":13,"y":94329},{"x":14,"y":102281},{"x":15,"y":109593},{"x":16,"y":114589},{"x":17,"y":124568},{"x":18,"y":130062},{"x":19,"y":138965},{"x":20,"y":151072},{"x":21,"y":151784},{"x":22,"y":158973},{"x":23,"y":172097},{"x":24,"y":190050},{"x":25,"y":182030},{"x":26,"y":186291},{"x":27,"y":198062},{"x":28,"y":204175},{"x":29,"y":212955},{"x":30,"y":216690},{"x":31,"y":224095},{"x":32,"y":232377},{"x":33,"y":238992},{"x":34,"y":317972},{"x":35,"y":254505},{"x":36,"y":256807},{"x":37,"y":268433},{"x":38,"y":274760},{"x":39,"y":281598},{"x":40,"y":288213},{"x":41,"y":295293},{"x":42,"y":346820},{"x":43,"y":330900},{"x":44,"y":320033},{"x":45,"y":337189},{"x":46,"y":333759},{"x":47,"y":339847},{"x":48,"y":346317},{"x":49,"y":354202},{"x":50,"y":360495},{"x":51,"y":370591},{"x":52,"y":380011},{"x":53,"y":383105},{"x":54,"y":393663},{"x":55,"y":399530},{"x":56,"y":404111},{"x":57,"y":416471},{"x":58,"y":418288},{"x":59,"y":426337},{"x":60,"y":482023},{"x":61,"y":442375},{"x":62,"y":458067},{"x":63,"y":483704},{"x":64,"y":470565},{"x":65,"y":468436},{"x":66,"y":484365},{"x":67,"y":487605},{"x":68,"y":498986},{"x":69,"y":501970},{"x":70,"y":513467},{"x":71,"y":513063},{"x":72,"y":530880},{"x":73,"y":530987},{"x":74,"y":544392},{"x":75,"y":541904},{"x":76,"y":560073},{"x":77,"y":560294},{"x":78,"y":572134},{"x":79,"y":575533},{"x":80,"y":582346},{"x":81,"y":586126},{"x":82,"y":592709},{"x":83,"y":604347},{"x":84,"y":591006},{"x":85,"y":611962},{"x":86,"y":603522},{"x":87,"y":611346},{"x":88,"y":618263},{"x":89,"y":641485},{"x":90,"y":654442},{"x":91,"y":665110},{"x":92,"y":646180},{"x":93,"y":677528},{"x":94,"y":679001},{"x":95,"y":697067},{"x":96,"y":699041},{"x":97,"y":706937},{"x":98,"y":708061},{"x":99,"y":720952},{"x":100,"y":728536},{"x":101,"y":730127},{"x":102,"y":736401},{"x":103,"y":763669},{"x":104,"y":805982},{"x":105,"y":758054},{"x":106,"y":765004},{"x":107,"y":773360},{"x":108,"y":779009},{"x":109,"y":788312},{"x":110,"y":816882},{"x":111,"y":806436},{"x":112,"y":806868},{"x":113,"y":814736},{"x":114,"y":869719},{"x":115,"y":834301},{"x":116,"y":847198},{"x":117,"y":845467},{"x":118,"y":859124},{"x":119,"y":859059},{"x":120,"y":872891},{"x":121,"y":877313},{"x":122,"y":892142},{"x":123,"y":897648},{"x":124,"y":904018},{"x":125,"y":909706},{"x":126,"y":909486},{"x":127,"y":916404},{"x":128,"y":930196},{"x":129,"y":932743},{"x":130,"y":944673},{"x":131,"y":970106},{"x":132,"y":959369},{"x":133,"y":960032},{"x":134,"y":975030},{"x":135,"y":980441},{"x":136,"y":988195},{"x":137,"y":992304},{"x":138,"y":1034481},{"x":139,"y":979346},{"x":140,"y":1017435},{"x":141,"y":1026984},{"x":142,"y":1033073},{"x":143,"y":1003998},{"x":144,"y":1047947},{"x":145,"y":1028869},{"x":146,"y":1061705},{"x":147,"y":1067027},{"x":148,"y":1077020},{"x":149,"y":1084063},{"x":150,"y":1082713},{"x":151,"y":1134074},{"x":152,"y":1111435},{"x":153,"y":1113959},{"x":154,"y":1112327},{"x":155,"y":1124677},{"x":156,"y":1135398},{"x":157,"y":1141606},{"x":158,"y":1146715},{"x":159,"y":1145196},{"x":160,"y":1162545},{"x":161,"y":1178643},{"x":162,"y":1169758},{"x":163,"y":1191357},{"x":164,"y":1199817},{"x":165,"y":1199357},{"x":166,"y":1197247},{"x":167,"y":1211453},{"x":168,"y":1221680},{"x":169,"y":1228939},{"x":170,"y":1326854},{"x":171,"y":1245647},{"x":172,"y":1242379},{"x":173,"y":1244726},{"x":174,"y":1263530},{"x":175,"y":1268798},{"x":176,"y":1319686},{"x":177,"y":1251235},{"x":178,"y":1280827},{"x":179,"y":1289502},{"x":180,"y":1306319},{"x":181,"y":1308013},{"x":182,"y":1354395},{"x":183,"y":1320750},{"x":184,"y":1337088},{"x":185,"y":1336218},{"x":186,"y":1336443},{"x":187,"y":1358974},{"x":188,"y":1488544},{"x":189,"y":1371113},{"x":190,"y":1375129},{"x":191,"y":1435385},{"x":192,"y":1387361},{"x":193,"y":1393028},{"x":194,"y":1409268},{"x":195,"y":1417025},{"x":196,"y":1462121},{"x":197,"y":1424040},{"x":198,"y":1438750},{"x":199,"y":1506444},{"x":200,"y":1440754},{"x":202,"y":1459090},{"x":204,"y":1473010},{"x":206,"y":1486125},{"x":208,"y":1504122},{"x":210,"y":1521486},{"x":212,"y":1538588},{"x":214,"y":1570811},{"x":216,"y":1564484},{"x":218,"y":1573294},{"x":220,"y":1641355},{"x":222,"y":1628440},{"x":224,"y":1616354},{"x":226,"y":1632522},{"x":228,"y":1643301},{"x":230,"y":1684823},{"x":232,"y":1684323},{"x":234,"y":1689989},{"x":236,"y":1713004},{"x":238,"y":1719876},{"x":240,"y":1759427},{"x":242,"y":1762309},{"x":244,"y":1761919},{"x":246,"y":1770310},{"x":248,"y":1797086},{"x":250,"y":1800596},{"x":252,"y":1868663},{"x":254,"y":1855713},{"x":256,"y":1856045},{"x":258,"y":1861060},{"x":260,"y":1874076},{"x":262,"y":1989657},{"x":264,"y":1927289},{"x":266,"y":1931174},{"x":268,"y":1950655},{"x":270,"y":1957940},{"x":272,"y":1969869},{"x":274,"y":1987390},{"x":276,"y":2001727},{"x":278,"y":2020647},{"x":280,"y":2080028},{"x":282,"y":2025061},{"x":284,"y":2017967},{"x":286,"y":2062000},{"x":288,"y":2097415},{"x":290,"y":2109364},{"x":292,"y":2064151},{"x":294,"y":2128453},{"x":296,"y":2153356},{"x":298,"y":2168554},{"x":300,"y":2128621},{"x":303,"y":2200491},{"x":306,"y":2222325},{"x":309,"y":2280702},{"x":312,"y":2406184},{"x":315,"y":2330899},{"x":318,"y":2317753},{"x":321,"y":2351408},{"x":324,"y":2398862},{"x":327,"y":2376140},{"x":330,"y":2420427},{"x":333,"y":2409307},{"x":336,"y":2438017},{"x":339,"y":2462355},{"x":342,"y":2483964},{"x":345,"y":2481053},{"x":348,"y":2535342},{"x":351,"y":2548898},{"x":354,"y":2556914},{"x":357,"y":2602983},{"x":360,"y":2624264},{"x":363,"y":2666854},{"x":366,"y":2664049},{"x":369,"y":2692435},{"x":372,"y":2716340},{"x":375,"y":2827857},{"x":378,"y":2815533},{"x":381,"y":2784334},{"x":384,"y":2800168},{"x":387,"y":2816795},{"x":390,"y":2831893},{"x":393,"y":2870699},{"x":396,"y":2914715},{"x":399,"y":2909623},{"x":402,"y":2937151},{"x":406,"y":2969658},{"x":410,"y":3091078},{"x":414,"y":2993873},{"x":418,"y":3054731},{"x":422,"y":3069758},{"x":426,"y":3139758},{"x":430,"y":3126823},{"x":434,"y":3160820},{"x":438,"y":3255894},{"x":442,"y":3239528},{"x":446,"y":3270229},{"x":450,"y":3289744},{"x":454,"y":3611612},{"x":458,"y":3367842},{"x":462,"y":3422582},{"x":466,"y":3410072},{"x":470,"y":3442672},{"x":474,"y":3445368},{"x":478,"y":3517889},{"x":482,"y":3526126},{"x":486,"y":3535059},{"x":490,"y":3585629},{"x":494,"y":3706699},{"x":498,"y":3732687},{"x":502,"y":3666536},{"x":507,"y":3730515},{"x":512,"y":3705776},{"x":517,"y":3778722},{"x":522,"y":3861066},{"x":527,"y":3867745},{"x":532,"y":4017454},{"x":537,"y":4009222},{"x":542,"y":3973818},{"x":547,"y":4030938},{"x":552,"y":4079885},{"x":557,"y":4077393},{"x":562,"y":4120903},{"x":567,"y":4267962},{"x":572,"y":4191634},{"x":577,"y":4225959},{"x":582,"y":4341558},{"x":587,"y":4312640},{"x":592,"y":4351585},{"x":597,"y":4545246},{"x":602,"y":4402084},{"x":608,"y":4447382},{"x":614,"y":4562508},{"x":620,"y":4556884}],"result":{"estimate":7337.916935826561,"r_square":0.9992742060894385}},{"name":"ke/Queue.push & Queue.pop:5000","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":137,"time":1009755454},"dataset":[{"x":1,"y":73329},{"x":2,"y":143965},{"x":3,"y":215385},{"x":4,"y":285438},{"x":5,"y":364380},{"x":6,"y":433238},{"x":7,"y":506965},{"x":8,"y":567064},{"x":9,"y":656094},{"x":10,"y":722685},{"x":11,"y":795257},{"x":12,"y":1049323},{"x":13,"y":1001034},{"x":14,"y":1011578},{"x":15,"y":1191577},{"x":16,"y":1156019},{"x":17,"y":1229526},{"x":18,"y":1402752},{"x":19,"y":1509114},{"x":20,"y":1550642},{"x":21,"y":1654678},{"x":22,"y":1648633},{"x":23,"y":1725696},{"x":24,"y":1792002},{"x":25,"y":1866322},{"x":26,"y":1935722},{"x":27,"y":2241553},{"x":28,"y":2203989},{"x":29,"y":2229231},{"x":30,"y":2292712},{"x":31,"y":2370538},{"x":32,"y":2493439},{"x":33,"y":2524908},{"x":34,"y":2593490},{"x":35,"y":2827993},{"x":36,"y":2945308},{"x":37,"y":3035944},{"x":38,"y":3098003},{"x":39,"y":3165623},{"x":40,"y":3233143},{"x":41,"y":3270153},{"x":42,"y":3381258},{"x":43,"y":3410637},{"x":44,"y":3596954},{"x":45,"y":3669001},{"x":46,"y":3772850},{"x":47,"y":3860282},{"x":48,"y":3985257},{"x":49,"y":4007546},{"x":50,"y":4028612},{"x":51,"y":4076610},{"x":52,"y":4190063},{"x":53,"y":4290764},{"x":54,"y":4369246},{"x":55,"y":4432332},{"x":56,"y":4498193},{"x":57,"y":4640291},{"x":58,"y":4657039},{"x":59,"y":4725003},{"x":60,"y":4888839},{"x":61,"y":4871603},{"x":62,"y":5019484},{"x":63,"y":5105201},{"x":64,"y":5126869},{"x":65,"y":5291695},{"x":66,"y":5276578},{"x":67,"y":5423035},{"x":68,"y":5417957},{"x":69,"y":5479504},{"x":70,"y":5689645},{"x":71,"y":5807723},{"x":72,"y":5880038},{"x":73,"y":5900800},{"x":74,"y":6069019},{"x":75,"y":6082387},{"x":76,"y":6301464},{"x":77,"y":6187420},{"x":78,"y":6295281},{"x":79,"y":6384982},{"x":80,"y":7561873},{"x":81,"y":6880751},{"x":82,"y":6774437},{"x":83,"y":6685792},{"x":84,"y":6922619},{"x":85,"y":6895464},{"x":86,"y":6954316},{"x":87,"y":6952499},{"x":88,"y":7061261},{"x":89,"y":7145356},{"x":90,"y":7114297},{"x":91,"y":7276787},{"x":92,"y":7341795},{"x":93,"y":7390092},{"x":94,"y":7404771},{"x":95,"y":7555684},{"x":96,"y":7542320},{"x":97,"y":7641541},{"x":98,"y":7802692},{"x":99,"y":7824263},{"x":100,"y":7961041},{"x":101,"y":7955037},{"x":102,"y":8030009},{"x":103,"y":8149240},{"x":104,"y":8132513},{"x":105,"y":8640640},{"x":106,"y":8390909},{"x":107,"y":8413972},{"x":108,"y":8563190},{"x":109,"y":8595870},{"x":110,"y":8900429},{"x":111,"y":8778052},{"x":112,"y":8947409},{"x":113,"y":9108727},{"x":114,"y":9294174},{"x":115,"y":9324263},{"x":116,"y":9261535},{"x":117,"y":9559260},{"x":118,"y":9325865},{"x":119,"y":9955404},{"x":120,"y":9537357},{"x":121,"y":9892395},{"x":122,"y":9891490},{"x":123,"y":10293492},{"x":124,"y":10046470},{"x":125,"y":10180330},{"x":126,"y":10192998},{"x":127,"y":10317236},{"x":128,"y":10042035},{"x":129,"y":10392661},{"x":130,"y":10259467},{"x":131,"y":10738166},{"x":132,"y":10426224},{"x":133,"y":10724124},{"x":134,"y":10781566},{"x":135,"y":10986681},{"x":136,"y":10859477},{"x":137,"y":11263734}],"result":{"estimate":80535.17613109833,"r_square":0.9978158640376593}},{"name":"ke/Rke.push & Rke.pop:100","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":465,"time":1000258916},"dataset":[{"x":1,"y":3712},{"x":2,"y":5650},{"x":3,"y":8378},{"x":4,"y":10916},{"x":5,"y":13544},{"x":6,"y":16165},{"x":7,"y":18719},{"x":8,"y":21391},{"x":9,"y":24032},{"x":10,"y":26671},{"x":11,"y":29327},{"x":12,"y":31932},{"x":13,"y":34534},{"x":14,"y":37135},{"x":15,"y":39781},{"x":16,"y":42307},{"x":17,"y":47004},{"x":18,"y":47757},{"x":19,"y":50292},{"x":20,"y":52929},{"x":21,"y":55515},{"x":22,"y":58257},{"x":23,"y":60783},{"x":24,"y":63567},{"x":25,"y":66093},{"x":26,"y":68616},{"x":27,"y":71525},{"x":28,"y":73856},{"x":29,"y":76442},{"x":30,"y":79347},{"x":31,"y":82047},{"x":32,"y":101861},{"x":33,"y":86975},{"x":34,"y":89628},{"x":35,"y":96279},{"x":36,"y":95275},{"x":37,"y":97805},{"x":38,"y":100205},{"x":39,"y":102669},{"x":40,"y":105476},{"x":41,"y":108159},{"x":42,"y":111037},{"x":43,"y":113765},{"x":44,"y":115794},{"x":45,"y":118864},{"x":46,"y":121268},{"x":47,"y":123699},{"x":48,"y":127155},{"x":49,"y":129773},{"x":50,"y":132251},{"x":51,"y":134539},{"x":52,"y":164483},{"x":53,"y":139488},{"x":54,"y":142407},{"x":55,"y":144932},{"x":56,"y":147670},{"x":57,"y":150541},{"x":58,"y":152911},{"x":59,"y":155752},{"x":60,"y":158153},{"x":61,"y":160971},{"x":62,"y":163423},{"x":63,"y":166262},{"x":64,"y":168944},{"x":65,"y":171757},{"x":66,"y":174371},{"x":67,"y":176838},{"x":68,"y":179507},{"x":69,"y":182167},{"x":70,"y":184668},{"x":71,"y":187517},{"x":72,"y":189978},{"x":73,"y":192565},{"x":74,"y":195426},{"x":75,"y":198021},{"x":76,"y":200718},{"x":77,"y":203200},{"x":78,"y":205785},{"x":79,"y":208531},{"x":80,"y":211079},{"x":81,"y":213701},{"x":82,"y":216537},{"x":83,"y":218831},{"x":84,"y":221769},{"x":85,"y":224244},{"x":86,"y":226766},{"x":87,"y":246434},{"x":88,"y":235605},{"x":89,"y":234924},{"x":90,"y":237298},{"x":91,"y":239686},{"x":92,"y":242704},{"x":93,"y":245162},{"x":94,"y":257008},{"x":95,"y":250645},{"x":96,"y":253382},{"x":97,"y":255707},{"x":98,"y":258255},{"x":99,"y":266565},{"x":100,"y":263596},{"x":101,"y":266150},{"x":102,"y":268774},{"x":103,"y":293534},{"x":104,"y":273908},{"x":105,"y":276737},{"x":106,"y":279344},{"x":107,"y":281958},{"x":108,"y":284433},{"x":109,"y":287220},{"x":110,"y":293571},{"x":111,"y":292559},{"x":112,"y":295059},{"x":113,"y":296880},{"x":114,"y":318685},{"x":115,"y":302883},{"x":116,"y":305345},{"x":117,"y":307686},{"x":118,"y":311062},{"x":119,"y":313643},{"x":120,"y":316118},{"x":121,"y":318683},{"x":122,"y":321134},{"x":123,"y":324267},{"x":124,"y":326491},{"x":125,"y":329252},{"x":126,"y":331099},{"x":127,"y":334305},{"x":128,"y":337010},{"x":129,"y":339712},{"x":130,"y":352852},{"x":131,"y":345014},{"x":132,"y":368482},{"x":133,"y":350065},{"x":134,"y":353184},{"x":135,"y":355668},{"x":136,"y":357369},{"x":137,"y":360609},{"x":138,"y":367016},{"x":139,"y":365983},{"x":140,"y":368521},{"x":141,"y":371579},{"x":142,"y":373630},{"x":143,"y":376427},{"x":144,"y":379264},{"x":145,"y":381581},{"x":146,"y":406452},{"x":147,"y":386955},{"x":148,"y":435246},{"x":149,"y":392239},{"x":150,"y":396112},{"x":151,"y":396879},{"x":152,"y":400252},{"x":153,"y":402465},{"x":154,"y":405302},{"x":155,"y":407797},{"x":156,"y":410759},{"x":157,"y":413033},{"x":158,"y":415304},{"x":159,"y":418166},{"x":160,"y":421038},{"x":161,"y":428293},{"x":162,"y":426126},{"x":163,"y":428217},{"x":164,"y":431281},{"x":165,"y":433685},{"x":166,"y":436630},{"x":167,"y":439349},{"x":168,"y":442086},{"x":169,"y":444681},{"x":170,"y":447332},{"x":171,"y":450040},{"x":172,"y":452720},{"x":173,"y":475399},{"x":174,"y":457663},{"x":175,"y":460453},{"x":176,"y":462826},{"x":177,"y":470165},{"x":178,"y":467524},{"x":179,"y":471116},{"x":180,"y":478230},{"x":181,"y":475997},{"x":182,"y":478509},{"x":183,"y":487713},{"x":184,"y":484248},{"x":185,"y":486357},{"x":186,"y":510104},{"x":187,"y":491816},{"x":188,"y":494344},{"x":189,"y":497519},{"x":190,"y":499707},{"x":191,"y":502252},{"x":192,"y":504850},{"x":193,"y":508031},{"x":194,"y":510345},{"x":195,"y":513576},{"x":196,"y":515363},{"x":197,"y":518260},{"x":198,"y":520517},{"x":199,"y":523254},{"x":200,"y":525962},{"x":202,"y":530488},{"x":204,"y":536632},{"x":206,"y":541527},{"x":208,"y":550227},{"x":210,"y":552107},{"x":212,"y":557593},{"x":214,"y":566762},{"x":216,"y":567726},{"x":218,"y":572789},{"x":220,"y":587377},{"x":222,"y":582857},{"x":224,"y":588844},{"x":226,"y":598676},{"x":228,"y":599269},{"x":230,"y":604499},{"x":232,"y":627513},{"x":234,"y":614723},{"x":236,"y":620591},{"x":238,"y":625464},{"x":240,"y":630980},{"x":242,"y":643553},{"x":244,"y":668495},{"x":246,"y":646678},{"x":248,"y":656933},{"x":250,"y":657174},{"x":252,"y":662009},{"x":254,"y":668060},{"x":256,"y":672027},{"x":258,"y":678020},{"x":260,"y":683060},{"x":262,"y":688744},{"x":264,"y":701298},{"x":266,"y":716799},{"x":268,"y":704367},{"x":270,"y":709579},{"x":272,"y":714583},{"x":274,"y":725338},{"x":276,"y":724899},{"x":278,"y":730478},{"x":280,"y":735912},{"x":282,"y":740714},{"x":284,"y":745840},{"x":286,"y":751256},{"x":288,"y":800742},{"x":290,"y":766651},{"x":292,"y":767049},{"x":294,"y":772139},{"x":296,"y":778103},{"x":298,"y":782581},{"x":300,"y":792505},{"x":303,"y":795222},{"x":306,"y":803928},{"x":309,"y":811820},{"x":312,"y":819310},{"x":315,"y":831721},{"x":318,"y":835025},{"x":321,"y":882739},{"x":324,"y":851199},{"x":327,"y":859019},{"x":330,"y":866857},{"x":333,"y":874567},{"x":336,"y":889754},{"x":339,"y":890248},{"x":342,"y":898059},{"x":345,"y":905570},{"x":348,"y":913821},{"x":351,"y":922244},{"x":354,"y":929464},{"x":357,"y":942632},{"x":360,"y":944367},{"x":363,"y":957636},{"x":366,"y":960966},{"x":369,"y":968488},{"x":372,"y":1020331},{"x":375,"y":984420},{"x":378,"y":993825},{"x":381,"y":1000422},{"x":384,"y":1013671},{"x":387,"y":1015566},{"x":390,"y":1029514},{"x":393,"y":1031419},{"x":396,"y":1048494},{"x":399,"y":1092235},{"x":402,"y":1055383},{"x":406,"y":1065594},{"x":410,"y":1076498},{"x":414,"y":1087264},{"x":418,"y":1096925},{"x":422,"y":1108121},{"x":426,"y":1118569},{"x":430,"y":1129408},{"x":434,"y":1156615},{"x":438,"y":1150165},{"x":442,"y":1160900},{"x":446,"y":1171372},{"x":450,"y":1181385},{"x":454,"y":1191927},{"x":458,"y":1202585},{"x":462,"y":1213323},{"x":466,"y":1267823},{"x":470,"y":1234222},{"x":474,"y":1244993},{"x":478,"y":1255190},{"x":482,"y":1265830},{"x":486,"y":1275706},{"x":490,"y":1365487},{"x":494,"y":1297540},{"x":498,"y":1357813},{"x":502,"y":1318321},{"x":507,"y":1336140},{"x":512,"y":1344875},{"x":517,"y":1362664},{"x":522,"y":1370841},{"x":527,"y":1390662},{"x":532,"y":1397386},{"x":537,"y":1410354},{"x":542,"y":1426494},{"x":547,"y":1436223},{"x":552,"y":1454649},{"x":557,"y":1462750},{"x":562,"y":1480855},{"x":567,"y":1488459},{"x":572,"y":1613292},{"x":577,"y":1519818},{"x":582,"y":1528003},{"x":587,"y":1546813},{"x":592,"y":1594563},{"x":597,"y":1567933},{"x":602,"y":1587008},{"x":608,"y":1640635},{"x":614,"y":1618788},{"x":620,"y":1627914},{"x":626,"y":1643845},{"x":632,"y":1665044},{"x":638,"y":1722252},{"x":644,"y":1700333},{"x":650,"y":1908299},{"x":656,"y":1722357},{"x":662,"y":1792861},{"x":668,"y":1753209},{"x":674,"y":1769384},{"x":680,"y":1834054},{"x":686,"y":1864765},{"x":692,"y":1817390},{"x":698,"y":1837535},{"x":704,"y":1847885},{"x":711,"y":1866485},{"x":718,"y":1893035},{"x":725,"y":1948596},{"x":732,"y":1921938},{"x":739,"y":1987843},{"x":746,"y":1963786},{"x":753,"y":1977007},{"x":760,"y":2003132},{"x":767,"y":2103116},{"x":774,"y":2031448},{"x":781,"y":2050820},{"x":788,"y":2073236},{"x":795,"y":2092535},{"x":802,"y":2104912},{"x":810,"y":2171453},{"x":818,"y":2152874},{"x":826,"y":2172074},{"x":834,"y":2188773},{"x":842,"y":2213419},{"x":850,"y":2238516},{"x":858,"y":2257437},{"x":866,"y":2272789},{"x":874,"y":2293373},{"x":882,"y":2319685},{"x":890,"y":2343160},{"x":898,"y":2405514},{"x":906,"y":2377269},{"x":915,"y":2510234},{"x":924,"y":2429643},{"x":933,"y":2456483},{"x":942,"y":2522535},{"x":951,"y":2495880},{"x":960,"y":2518536},{"x":969,"y":2547578},{"x":978,"y":2575178},{"x":987,"y":2639927},{"x":996,"y":2618807},{"x":1005,"y":2642517},{"x":1015,"y":2664479},{"x":1025,"y":2689850},{"x":1035,"y":2788259},{"x":1045,"y":2748364},{"x":1055,"y":2775300},{"x":1065,"y":2801756},{"x":1075,"y":2875681},{"x":1085,"y":2853936},{"x":1095,"y":2877615},{"x":1105,"y":2905070},{"x":1116,"y":2935310},{"x":1127,"y":3002970},{"x":1138,"y":2986814},{"x":1149,"y":3015359},{"x":1160,"y":3045047},{"x":1171,"y":3119554},{"x":1182,"y":3102515},{"x":1193,"y":3132404},{"x":1204,"y":3211467},{"x":1216,"y":3243543},{"x":1228,"y":3222568},{"x":1240,"y":3254975},{"x":1252,"y":3286177},{"x":1264,"y":3346100},{"x":1276,"y":3349447},{"x":1288,"y":3381531},{"x":1300,"y":3419452},{"x":1313,"y":3536697},{"x":1326,"y":3485990},{"x":1339,"y":3519772},{"x":1352,"y":3554222},{"x":1365,"y":3637961},{"x":1378,"y":3622935},{"x":1391,"y":3656186},{"x":1404,"y":3690269},{"x":1418,"y":3771941},{"x":1432,"y":3809318},{"x":1446,"y":3801889},{"x":1460,"y":3859295},{"x":1474,"y":3874657},{"x":1488,"y":3911445},{"x":1502,"y":3992325},{"x":1517,"y":4032893},{"x":1532,"y":4027668},{"x":1547,"y":4067606},{"x":1562,"y":4153732},{"x":1577,"y":4144636},{"x":1592,"y":4184747},{"x":1607,"y":4227517},{"x":1623,"y":4363010},{"x":1639,"y":4306496},{"x":1655,"y":4348751},{"x":1671,"y":4485272},{"x":1687,"y":4433823},{"x":1703,"y":4475685},{"x":1720,"y":4567977},{"x":1737,"y":4565104},{"x":1754,"y":4609200},{"x":1771,"y":4703227},{"x":1788,"y":4699396},{"x":1805,"y":5020616},{"x":1823,"y":4962835},{"x":1841,"y":4912564},{"x":1859,"y":5074759},{"x":1877,"y":5026580},{"x":1895,"y":5026650},{"x":1913,"y":5074688},{"x":1932,"y":5310933},{"x":1951,"y":5127317},{"x":1970,"y":5184837},{"x":1989,"y":5227470},{"x":2008,"y":5279037},{"x":2028,"y":5377383},{"x":2048,"y":5384973},{"x":2068,"y":5486280},{"x":2088,"y":5540027},{"x":2108,"y":5538581},{"x":2129,"y":5597027},{"x":2150,"y":5843970},{"x":2171,"y":5756750},{"x":2192,"y":5868351}],"result":{"estimate":2650.168592167112,"r_square":0.9996527088843228}},{"name":"ke/Rke.push & Rke.pop:1000","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":234,"time":1006205754},"dataset":[{"x":1,"y":26478},{"x":2,"y":52849},{"x":3,"y":78600},{"x":4,"y":104697},{"x":5,"y":131034},{"x":6,"y":157144},{"x":7,"y":183096},{"x":8,"y":229640},{"x":9,"y":235305},{"x":10,"y":261413},{"x":11,"y":287596},{"x":12,"y":313789},{"x":13,"y":339956},{"x":14,"y":366630},{"x":15,"y":392497},{"x":16,"y":422712},{"x":17,"y":464239},{"x":18,"y":470971},{"x":19,"y":523857},{"x":20,"y":522895},{"x":21,"y":650188},{"x":22,"y":575458},{"x":23,"y":630920},{"x":24,"y":626822},{"x":25,"y":653623},{"x":26,"y":679265},{"x":27,"y":705729},{"x":28,"y":732298},{"x":29,"y":758342},{"x":30,"y":784776},{"x":31,"y":810232},{"x":32,"y":837048},{"x":33,"y":862635},{"x":34,"y":888949},{"x":35,"y":914778},{"x":36,"y":940988},{"x":37,"y":966554},{"x":38,"y":993333},{"x":39,"y":1019073},{"x":40,"y":1045389},{"x":41,"y":1071269},{"x":42,"y":1097836},{"x":43,"y":1132685},{"x":44,"y":1170832},{"x":45,"y":1181313},{"x":46,"y":1201572},{"x":47,"y":1228182},{"x":48,"y":1259035},{"x":49,"y":1280231},{"x":50,"y":1313362},{"x":51,"y":1355218},{"x":52,"y":1358161},{"x":53,"y":1389980},{"x":54,"y":1411085},{"x":55,"y":1436936},{"x":56,"y":1470106},{"x":57,"y":1489358},{"x":58,"y":1604644},{"x":59,"y":1546602},{"x":60,"y":1567829},{"x":61,"y":1593701},{"x":62,"y":1678117},{"x":63,"y":1645230},{"x":64,"y":1716997},{"x":65,"y":1703236},{"x":66,"y":1723031},{"x":67,"y":1750574},{"x":68,"y":1781226},{"x":69,"y":1810497},{"x":70,"y":1844780},{"x":71,"y":1854116},{"x":72,"y":1886343},{"x":73,"y":1921507},{"x":74,"y":1932767},{"x":75,"y":2004357},{"x":76,"y":1990706},{"x":77,"y":2016584},{"x":78,"y":2041202},{"x":79,"y":2063869},{"x":80,"y":2089826},{"x":81,"y":2168611},{"x":82,"y":2146705},{"x":83,"y":2181832},{"x":84,"y":2194410},{"x":85,"y":2219556},{"x":86,"y":2245193},{"x":87,"y":2277645},{"x":88,"y":2303965},{"x":89,"y":2331818},{"x":90,"y":2439846},{"x":91,"y":2377322},{"x":92,"y":2402306},{"x":93,"y":2429798},{"x":94,"y":2454518},{"x":95,"y":2532847},{"x":96,"y":2511863},{"x":97,"y":2538559},{"x":98,"y":2562917},{"x":99,"y":2593198},{"x":100,"y":2619208},{"x":101,"y":2642887},{"x":102,"y":2668174},{"x":103,"y":2696433},{"x":104,"y":2763958},{"x":105,"y":2740234},{"x":106,"y":2768107},{"x":107,"y":2793298},{"x":108,"y":2864092},{"x":109,"y":2845847},{"x":110,"y":2872083},{"x":111,"y":2898512},{"x":112,"y":2969222},{"x":113,"y":2950516},{"x":114,"y":2979178},{"x":115,"y":3009589},{"x":116,"y":3119179},{"x":117,"y":3096672},{"x":118,"y":3130642},{"x":119,"y":3284409},{"x":120,"y":3418989},{"x":121,"y":3350377},{"x":122,"y":3320977},{"x":123,"y":3346346},{"x":124,"y":3283381},{"x":125,"y":3312474},{"x":126,"y":3294960},{"x":127,"y":3325048},{"x":128,"y":3347957},{"x":129,"y":3422175},{"x":130,"y":3399104},{"x":131,"y":3474253},{"x":132,"y":3446245},{"x":133,"y":3479006},{"x":134,"y":3587000},{"x":135,"y":3625803},{"x":136,"y":3556668},{"x":137,"y":3582913},{"x":138,"y":3659235},{"x":139,"y":3682391},{"x":140,"y":3660349},{"x":141,"y":3686139},{"x":142,"y":3786030},{"x":143,"y":3739280},{"x":144,"y":3767441},{"x":145,"y":3840311},{"x":146,"y":3818219},{"x":147,"y":3843371},{"x":148,"y":3873444},{"x":149,"y":4045476},{"x":150,"y":3923186},{"x":151,"y":3948968},{"x":152,"y":4020187},{"x":153,"y":4001000},{"x":154,"y":4028601},{"x":155,"y":4097664},{"x":156,"y":4079431},{"x":157,"y":4103895},{"x":158,"y":4218047},{"x":159,"y":4157264},{"x":160,"y":4183081},{"x":161,"y":4259149},{"x":162,"y":4236130},{"x":163,"y":4262501},{"x":164,"y":4291047},{"x":165,"y":4315823},{"x":166,"y":4345511},{"x":167,"y":4369697},{"x":168,"y":4392707},{"x":169,"y":4611100},{"x":170,"y":4447998},{"x":171,"y":4520545},{"x":172,"y":4497453},{"x":173,"y":4610636},{"x":174,"y":4547673},{"x":175,"y":4663758},{"x":176,"y":4737421},{"x":177,"y":4629123},{"x":178,"y":4707478},{"x":179,"y":4814482},{"x":180,"y":4711510},{"x":181,"y":4732077},{"x":182,"y":4854457},{"x":183,"y":4784796},{"x":184,"y":4851180},{"x":185,"y":5089043},{"x":186,"y":4906385},{"x":187,"y":4906853},{"x":188,"y":5015023},{"x":189,"y":4939134},{"x":190,"y":5021885},{"x":191,"y":5003832},{"x":192,"y":5026822},{"x":193,"y":5172498},{"x":194,"y":5070729},{"x":195,"y":5106199},{"x":196,"y":5132647},{"x":197,"y":5279086},{"x":198,"y":5224527},{"x":199,"y":5203694},{"x":200,"y":5264887},{"x":202,"y":5419218},{"x":204,"y":5384532},{"x":206,"y":5435967},{"x":208,"y":5435797},{"x":210,"y":5496395},{"x":212,"y":5585996},{"x":214,"y":5592413},{"x":216,"y":5738162},{"x":218,"y":5696961},{"x":220,"y":5796662},{"x":222,"y":5886404},{"x":224,"y":5904189},{"x":226,"y":5999249},{"x":228,"y":5957683},{"x":230,"y":6172265},{"x":232,"y":6066551},{"x":234,"y":6124442},{"x":236,"y":6213958},{"x":238,"y":6244104},{"x":240,"y":6373286},{"x":242,"y":6323068},{"x":244,"y":6470788},{"x":246,"y":6529300},{"x":248,"y":6532558},{"x":250,"y":6537996},{"x":252,"y":6591181},{"x":254,"y":6641154},{"x":256,"y":6695512},{"x":258,"y":6794664},{"x":260,"y":6801494},{"x":262,"y":6895995},{"x":264,"y":7061184},{"x":266,"y":7000729},{"x":268,"y":7009972}],"result":{"estimate":26362.27272361846,"r_square":0.9994522848549735}},{"name":"ke/Rke.push & Rke.pop:10000","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":83,"time":1019788156},"dataset":[{"x":1,"y":286851},{"x":2,"y":520197},{"x":3,"y":779915},{"x":4,"y":1039902},{"x":5,"y":1300029},{"x":6,"y":1565579},{"x":7,"y":1819507},{"x":8,"y":2159017},{"x":9,"y":2337675},{"x":10,"y":2603105},{"x":11,"y":2861885},{"x":12,"y":3172008},{"x":13,"y":3376652},{"x":14,"y":3642913},{"x":15,"y":3905203},{"x":16,"y":4162118},{"x":17,"y":4641681},{"x":18,"y":4728940},{"x":19,"y":4984060},{"x":20,"y":5422838},{"x":21,"y":5546313},{"x":22,"y":5777803},{"x":23,"y":6071171},{"x":24,"y":6246585},{"x":25,"y":6553211},{"x":26,"y":6765718},{"x":27,"y":7029181},{"x":28,"y":7287736},{"x":29,"y":7558671},{"x":30,"y":7815545},{"x":31,"y":8165405},{"x":32,"y":8339497},{"x":33,"y":8677833},{"x":34,"y":8853460},{"x":35,"y":9231780},{"x":36,"y":9467329},{"x":37,"y":9670218},{"x":38,"y":9960552},{"x":39,"y":10205882},{"x":40,"y":10423271},{"x":41,"y":10808701},{"x":42,"y":11029050},{"x":43,"y":11244200},{"x":44,"y":11505939},{"x":45,"y":11799628},{"x":46,"y":12025168},{"x":47,"y":12286032},{"x":48,"y":12618092},{"x":49,"y":12805351},{"x":50,"y":13016901},{"x":51,"y":13414544},{"x":52,"y":13586080},{"x":53,"y":14091784},{"x":54,"y":14197210},{"x":55,"y":14370041},{"x":56,"y":14664539},{"x":57,"y":14893063},{"x":58,"y":15202985},{"x":59,"y":15412491},{"x":60,"y":15849447},{"x":61,"y":15970620},{"x":62,"y":16276127},{"x":63,"y":16448065},{"x":64,"y":16919390},{"x":65,"y":16974141},{"x":66,"y":17227923},{"x":67,"y":17489343},{"x":68,"y":17840216},{"x":69,"y":18102641},{"x":70,"y":18368648},{"x":71,"y":18561532},{"x":72,"y":18794571},{"x":73,"y":19160820},{"x":74,"y":19313123},{"x":75,"y":19816834},{"x":76,"y":19879724},{"x":77,"y":20220464},{"x":78,"y":20444191},{"x":79,"y":20618026},{"x":80,"y":20919544},{"x":81,"y":21132756},{"x":82,"y":21434025},{"x":83,"y":21881242}],"result":{"estimate":262025.583899327,"r_square":0.9999014570095698}},{"name":"ke/Rke.push & Rke.pop:500","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":303,"time":1001630384},"dataset":[{"x":1,"y":13590},{"x":2,"y":26630},{"x":3,"y":39450},{"x":4,"y":52646},{"x":5,"y":65938},{"x":6,"y":79346},{"x":7,"y":92049},{"x":8,"y":105443},{"x":9,"y":118721},{"x":10,"y":131182},{"x":11,"y":144527},{"x":12,"y":157576},{"x":13,"y":170740},{"x":14,"y":183573},{"x":15,"y":224973},{"x":16,"y":210091},{"x":17,"y":223124},{"x":18,"y":236002},{"x":19,"y":249146},{"x":20,"y":286827},{"x":21,"y":274984},{"x":22,"y":288550},{"x":23,"y":318278},{"x":24,"y":313499},{"x":25,"y":345108},{"x":26,"y":340182},{"x":27,"y":353643},{"x":28,"y":366718},{"x":29,"y":379461},{"x":30,"y":419207},{"x":31,"y":405430},{"x":32,"y":417908},{"x":33,"y":436555},{"x":34,"y":444769},{"x":35,"y":458367},{"x":36,"y":470651},{"x":37,"y":484225},{"x":38,"y":496549},{"x":39,"y":510353},{"x":40,"y":523584},{"x":41,"y":541708},{"x":42,"y":549597},{"x":43,"y":561965},{"x":44,"y":575353},{"x":45,"y":588549},{"x":46,"y":608682},{"x":47,"y":614332},{"x":48,"y":627962},{"x":49,"y":639956},{"x":50,"y":653589},{"x":51,"y":671767},{"x":52,"y":680395},{"x":53,"y":693375},{"x":54,"y":706160},{"x":55,"y":719381},{"x":56,"y":731405},{"x":57,"y":765782},{"x":58,"y":763387},{"x":59,"y":771303},{"x":60,"y":788242},{"x":61,"y":797354},{"x":62,"y":882820},{"x":63,"y":823774},{"x":64,"y":837191},{"x":65,"y":849753},{"x":66,"y":863409},{"x":67,"y":892823},{"x":68,"y":888864},{"x":69,"y":925904},{"x":70,"y":914571},{"x":71,"y":984531},{"x":72,"y":941175},{"x":73,"y":963596},{"x":74,"y":966247},{"x":75,"y":1069594},{"x":76,"y":993444},{"x":77,"y":1011528},{"x":78,"y":1018766},{"x":79,"y":1037450},{"x":80,"y":1045706},{"x":81,"y":1063427},{"x":82,"y":1071035},{"x":83,"y":1136335},{"x":84,"y":1098066},{"x":85,"y":1110662},{"x":86,"y":1124766},{"x":87,"y":1138144},{"x":88,"y":1150422},{"x":89,"y":1163909},{"x":90,"y":1183728},{"x":91,"y":1234552},{"x":92,"y":1206947},{"x":93,"y":1215433},{"x":94,"y":1233076},{"x":95,"y":1241470},{"x":96,"y":1253434},{"x":97,"y":1267158},{"x":98,"y":1300018},{"x":99,"y":1306311},{"x":100,"y":1307420},{"x":101,"y":1326402},{"x":102,"y":1332983},{"x":103,"y":1345052},{"x":104,"y":1367349},{"x":105,"y":1371710},{"x":106,"y":1390126},{"x":107,"y":1398059},{"x":108,"y":1409872},{"x":109,"y":1427698},{"x":110,"y":1438327},{"x":111,"y":1457719},{"x":112,"y":1485565},{"x":113,"y":1477175},{"x":114,"y":1496271},{"x":115,"y":1502290},{"x":116,"y":1521451},{"x":117,"y":1528392},{"x":118,"y":1542129},{"x":119,"y":1648042},{"x":120,"y":1569317},{"x":121,"y":1581844},{"x":122,"y":1599884},{"x":123,"y":1607376},{"x":124,"y":1620786},{"x":125,"y":1661648},{"x":126,"y":1646571},{"x":127,"y":1659559},{"x":128,"y":1680048},{"x":129,"y":1686727},{"x":130,"y":1699527},{"x":131,"y":1721430},{"x":132,"y":1726129},{"x":133,"y":1738193},{"x":134,"y":1757375},{"x":135,"y":1763991},{"x":136,"y":1778165},{"x":137,"y":1800319},{"x":138,"y":1809064},{"x":139,"y":1817264},{"x":140,"y":1830682},{"x":141,"y":1848957},{"x":142,"y":1856846},{"x":143,"y":1868639},{"x":144,"y":1887178},{"x":145,"y":1902036},{"x":146,"y":1907071},{"x":147,"y":1920942},{"x":148,"y":1942268},{"x":149,"y":1997647},{"x":150,"y":1960288},{"x":151,"y":1973415},{"x":152,"y":1991079},{"x":153,"y":2004637},{"x":154,"y":2011762},{"x":155,"y":2089665},{"x":156,"y":2043579},{"x":157,"y":2103523},{"x":158,"y":2064678},{"x":159,"y":2075949},{"x":160,"y":2143161},{"x":161,"y":2109356},{"x":162,"y":2117998},{"x":163,"y":2131227},{"x":164,"y":2149952},{"x":165,"y":2163144},{"x":166,"y":2175977},{"x":167,"y":2182270},{"x":168,"y":2195475},{"x":169,"y":2213033},{"x":170,"y":2231337},{"x":171,"y":2258508},{"x":172,"y":2247183},{"x":173,"y":2261767},{"x":174,"y":2275952},{"x":175,"y":2296089},{"x":176,"y":2351397},{"x":177,"y":2320048},{"x":178,"y":2327262},{"x":179,"y":2345722},{"x":180,"y":2406962},{"x":181,"y":2396354},{"x":182,"y":2383797},{"x":183,"y":2396091},{"x":184,"y":2405603},{"x":185,"y":2417905},{"x":186,"y":2430771},{"x":187,"y":2448885},{"x":188,"y":2462648},{"x":189,"y":2475581},{"x":190,"y":2595905},{"x":191,"y":2501918},{"x":192,"y":2509540},{"x":193,"y":2523115},{"x":194,"y":2534171},{"x":195,"y":2601816},{"x":196,"y":2566084},{"x":197,"y":2580503},{"x":198,"y":2592488},{"x":199,"y":2607063},{"x":200,"y":2851698},{"x":202,"y":2689032},{"x":204,"y":2688859},{"x":206,"y":2691636},{"x":208,"y":2764213},{"x":210,"y":2743211},{"x":212,"y":2770730},{"x":214,"y":2796442},{"x":216,"y":2830318},{"x":218,"y":2854110},{"x":220,"y":2929702},{"x":222,"y":2905896},{"x":224,"y":2933818},{"x":226,"y":3041656},{"x":228,"y":2983675},{"x":230,"y":3009488},{"x":232,"y":3038221},{"x":234,"y":3111505},{"x":236,"y":3116597},{"x":238,"y":3114539},{"x":240,"y":3141150},{"x":242,"y":3215095},{"x":244,"y":3189702},{"x":246,"y":3212643},{"x":248,"y":3240982},{"x":250,"y":3316328},{"x":252,"y":3300041},{"x":254,"y":3387326},{"x":256,"y":3355648},{"x":258,"y":3471902},{"x":260,"y":3406239},{"x":262,"y":3432436},{"x":264,"y":3460010},{"x":266,"y":3477567},{"x":268,"y":3504245},{"x":270,"y":3536836},{"x":272,"y":3645582},{"x":274,"y":3587101},{"x":276,"y":3614215},{"x":278,"y":3642270},{"x":280,"y":3713324},{"x":282,"y":3692171},{"x":284,"y":3719376},{"x":286,"y":3794712},{"x":288,"y":3771976},{"x":290,"y":3795945},{"x":292,"y":3824428},{"x":294,"y":3892425},{"x":296,"y":3874207},{"x":298,"y":3901182},{"x":300,"y":3978788},{"x":303,"y":4008969},{"x":306,"y":4050793},{"x":309,"y":4046018},{"x":312,"y":4084368},{"x":315,"y":4123182},{"x":318,"y":4170999},{"x":321,"y":4284140},{"x":324,"y":4237822},{"x":327,"y":4283913},{"x":330,"y":4367650},{"x":333,"y":4357464},{"x":336,"y":4400291},{"x":339,"y":4485237},{"x":342,"y":4522112},{"x":345,"y":4513512},{"x":348,"y":4604858},{"x":351,"y":4591778},{"x":354,"y":4631746},{"x":357,"y":4715037},{"x":360,"y":4707720},{"x":363,"y":4748915},{"x":366,"y":4833492},{"x":369,"y":4924686},{"x":372,"y":4912636},{"x":375,"y":4993415},{"x":378,"y":4943050},{"x":381,"y":4992988},{"x":384,"y":5020872},{"x":387,"y":5064767},{"x":390,"y":5148154},{"x":393,"y":5258824},{"x":396,"y":5181449},{"x":399,"y":5265316},{"x":402,"y":5258335},{"x":406,"y":5315096},{"x":410,"y":5384915},{"x":414,"y":5417769},{"x":418,"y":5565231},{"x":422,"y":5519510},{"x":426,"y":5573712},{"x":430,"y":5760004},{"x":434,"y":5672358},{"x":438,"y":5774964},{"x":442,"y":5783413},{"x":446,"y":5841793},{"x":450,"y":5927600},{"x":454,"y":5934344},{"x":458,"y":6066518},{"x":462,"y":6046049},{"x":466,"y":6183952},{"x":470,"y":6143827},{"x":474,"y":6205646},{"x":478,"y":6298381}],"result":{"estimate":13155.44475649328,"r_square":0.9997298907313903}},{"name":"ke/Rke.push & Rke.pop:5000","description":{"start":1,"sampling":1.01,"stabilize":true,"quota":1000000000,"limit":3000,"instances":["minor-allocated","major-allocated","monotonic-clock"],"samples":115,"time":1015553941},"dataset":[{"x":1,"y":130560},{"x":2,"y":260492},{"x":3,"y":390588},{"x":4,"y":525483},{"x":5,"y":650342},{"x":6,"y":829867},{"x":7,"y":909901},{"x":8,"y":1045075},{"x":9,"y":1273319},{"x":10,"y":1344633},{"x":11,"y":1479314},{"x":12,"y":1560248},{"x":13,"y":1689908},{"x":14,"y":1842016},{"x":15,"y":1958030},{"x":16,"y":2078576},{"x":17,"y":2209011},{"x":18,"y":2339717},{"x":19,"y":2470311},{"x":20,"y":2652323},{"x":21,"y":2734394},{"x":22,"y":2908302},{"x":23,"y":2994017},{"x":24,"y":3162984},{"x":25,"y":3250360},{"x":26,"y":3385036},{"x":27,"y":3562878},{"x":28,"y":3690099},{"x":29,"y":3774675},{"x":30,"y":3908196},{"x":31,"y":4121192},{"x":32,"y":4164332},{"x":33,"y":4342695},{"x":34,"y":4472506},{"x":35,"y":4554630},{"x":36,"y":4684243},{"x":37,"y":4862627},{"x":38,"y":4945007},{"x":39,"y":5085742},{"x":40,"y":5389783},{"x":41,"y":5341866},{"x":42,"y":5520197},{"x":43,"y":5597705},{"x":44,"y":5730719},{"x":45,"y":5909516},{"x":46,"y":5997621},{"x":47,"y":6211963},{"x":48,"y":6248104},{"x":49,"y":6432914},{"x":50,"y":6517134},{"x":51,"y":6694472},{"x":52,"y":6776441},{"x":53,"y":7004906},{"x":54,"y":7041364},{"x":55,"y":7210074},{"x":56,"y":7294239},{"x":57,"y":7474443},{"x":58,"y":7558604},{"x":59,"y":7778621},{"x":60,"y":7819980},{"x":61,"y":7995047},{"x":62,"y":8086345},{"x":63,"y":8255270},{"x":64,"y":8339786},{"x":65,"y":8488372},{"x":66,"y":8650613},{"x":67,"y":8729468},{"x":68,"y":8959144},{"x":69,"y":9087353},{"x":70,"y":9262024},{"x":71,"y":9351712},{"x":72,"y":9425249},{"x":73,"y":9559630},{"x":74,"y":9888545},{"x":75,"y":9823007},{"x":76,"y":9941036},{"x":77,"y":10075677},{"x":78,"y":10172757},{"x":79,"y":10381287},{"x":80,"y":10470088},{"x":81,"y":10635641},{"x":82,"y":10683595},{"x":83,"y":10950729},{"x":84,"y":11135993},{"x":85,"y":11079635},{"x":86,"y":11253020},{"x":87,"y":11425660},{"x":88,"y":11556467},{"x":89,"y":11597875},{"x":90,"y":11747471},{"x":91,"y":11905485},{"x":92,"y":12033185},{"x":93,"y":12213380},{"x":94,"y":12248495},{"x":95,"y":12474397},{"x":96,"y":12555725},{"x":97,"y":12687760},{"x":98,"y":12895911},{"x":99,"y":12947294},{"x":100,"y":13030401},{"x":101,"y":13251252},{"x":102,"y":13472093},{"x":103,"y":13463388},{"x":104,"y":13824056},{"x":105,"y":13911886},{"x":106,"y":13897621},{"x":107,"y":14027793},{"x":108,"y":14203411},{"x":109,"y":14339097},{"x":110,"y":14380447},{"x":111,"y":14464683},{"x":112,"y":14592600},{"x":113,"y":14777713},{"x":114,"y":14933010},{"x":115,"y":15074068}],"result":{"estimate":131093.2730095991,"r_square":0.9998673878907826}}]}
+
+
+if (contents == null)
+    d3.json("outputs.json", render);
+else
+    render(contents);
+}
+
+  </script>
+
+</body>
+</html>

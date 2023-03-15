@@ -1,4 +1,3 @@
 (library
  (name ke)
- (public_name ke)
- (libraries fmt))
+ (public_name ke))

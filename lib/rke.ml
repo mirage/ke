@@ -34,8 +34,7 @@ let create ?capacity kind =
   let capacity =
     match capacity with
     | None | Some 0 -> 1
-    | Some n ->
-        if n < 0 then Fmt.invalid_arg "Rke.create" else to_power_of_two n
+    | Some n -> if n < 0 then invalid_arg "Rke.create" else to_power_of_two n
   in
   {
     r = 0;
@@ -62,9 +61,9 @@ let grow t want =
     let pre = t.c - msk in
     let rst = sze - pre in
     (if rst > 0 then (
-     Bigarray.Array1.(blit (sub t.v msk pre) (sub dst 0 pre));
-     Bigarray.Array1.(blit (sub t.v 0 rst) (sub dst pre rst)))
-    else Bigarray.Array1.(blit (sub t.v msk sze) (sub dst 0 sze)));
+       Bigarray.Array1.(blit (sub t.v msk pre) (sub dst 0 pre));
+       Bigarray.Array1.(blit (sub t.v 0 rst) (sub dst pre rst)))
+     else Bigarray.Array1.(blit (sub t.v msk sze) (sub dst 0 sze)));
     t.v <- dst;
     t.w <- sze;
     t.c <- c;
@@ -196,8 +195,8 @@ let fold f a t =
   iter (fun x -> a := f !a x) t;
   !a
 
-let pp ?sep pp_elt = Fmt.iter ?sep iter pp_elt
-let dump pp_elt = Fmt.Dump.iter iter (Fmt.any "rke") pp_elt
+let pp ?sep pp_elt = Minifmt.iter ?sep iter pp_elt
+let dump pp_elt = Minifmt.iter_dump iter (Minifmt.any "rke") pp_elt
 
 let clear q =
   q.r <- 0;
@@ -228,8 +227,7 @@ module Weighted = struct
       match capacity with
       | None | Some 0 -> 1
       | Some n ->
-          if n < 0 then Fmt.invalid_arg "Rke.Weighted.create"
-          else to_power_of_two n
+          if n < 0 then invalid_arg "Rke.Weighted.create" else to_power_of_two n
     in
     ( {
         r = 0;
@@ -246,8 +244,7 @@ module Weighted = struct
     { r = t.r; w = t.w; c = t.c; v; k = t.k }
 
   let from v =
-    if not (is_power_of_two (Bigarray.Array1.dim v)) then
-      Fmt.invalid_arg "RBA.from";
+    if not (is_power_of_two (Bigarray.Array1.dim v)) then invalid_arg "RBA.from";
     let c = Bigarray.Array1.dim v in
     let k = Bigarray.Array1.kind v in
     { r = 0; w = 0; c; k; v }
@@ -389,8 +386,8 @@ module Weighted = struct
     iter (fun x -> a := f !a x) t;
     !a
 
-  let pp ?sep pp_elt = Fmt.iter ?sep iter pp_elt
-  let dump pp_elt = Fmt.Dump.iter iter (Fmt.any "rke:weighted") pp_elt
+  let pp ?sep pp_elt = Minifmt.iter ?sep iter pp_elt
+  let dump pp_elt = Minifmt.iter_dump iter (Minifmt.any "rke:weighted") pp_elt
 
   let clear q =
     q.r <- 0;

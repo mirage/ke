@@ -1,3 +1,8 @@
 (executable
  (name fuzz)
- (libraries crowbar bigstringaf ke))
+ (libraries fmt crowbar bigstringaf ke))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./fuzz.exe)))

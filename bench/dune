@@ -1,19 +1,21 @@
 (executable
  (name bench_with_bechamel)
  (modules bench_with_bechamel)
- (libraries notty.unix bigstringaf ke bechamel bechamel-perf bechamel-notty))
-
-(executable
- (name bench_with_core)
- (modules bench_with_core)
- (libraries bigstringaf core_bench ke core core_unix.command_unix))
+ (libraries bigstringaf ke bechamel bechamel-js))
 
 (rule
- (alias runbench)
+ (targets bench.json)
+ (enabled_if
+  (= %{profile} benchmark))
  (action
-  (run ./bench_with_bechamel.exe)))
+  (with-stdout-to
+   %{targets}
+   (run ./bench_with_bechamel.exe push&pop))))
 
 (rule
- (alias runbench)
+ (targets bench.html)
+ (mode promote)
+ (enabled_if
+  (= %{profile} benchmark))
  (action
-  (run ./bench_with_core.exe)))
+  (system "%{bin:bechamel-html} < %{dep:bench.json} > %{targets}")))
