@@ -53,10 +53,16 @@ module type F = sig
   (** [fold f a q] is equivalent to [List.fold_left f a l], where [l] is the
      list of [q]'s elements. The queue remains unchanged. *)
 
-  val pp : ?sep:unit Fmt.t -> 'a Fmt.t -> 'a t Fmt.t
+  val pp :
+    ?sep:(Format.formatter -> unit -> unit) ->
+    (Format.formatter -> 'a -> unit) ->
+    Format.formatter ->
+    'a t ->
+    unit
   (** Pretty-printer of {!t}. *)
 
-  val dump : 'a Fmt.t -> 'a t Fmt.t
+  val dump :
+    (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
   (** Human-readable pretty-printer of {!t}. *)
 end
 
@@ -191,10 +197,16 @@ module type R = sig
   (** [fold f a q] is equivalent to [List.fold_left f a l], where [l] is the
      list of [q]'s elements. The queue remains unchanged. *)
 
-  val pp : ?sep:unit Fmt.t -> 'a Fmt.t -> ('a, 'b) t Fmt.t
+  val pp :
+    ?sep:(Format.formatter -> unit -> unit) ->
+    (Format.formatter -> 'a -> unit) ->
+    Format.formatter ->
+    ('a, 'b) t ->
+    unit
   (** Pretty-printer of {!t}. *)
 
-  val dump : 'a Fmt.t -> ('a, 'b) t Fmt.t
+  val dump :
+    (Format.formatter -> 'a -> unit) -> Format.formatter -> ('a, 'b) t -> unit
   (** Human-readable pretty-printer of {!t}. *)
 end
 
@@ -355,10 +367,16 @@ module Weighted = struct
     (** [fold f a q] is equivalent to [List.fold_left f a l], where [l] is the
        list of [q]'s elements. The queue remains unchanged. *)
 
-    val pp : ?sep:unit Fmt.t -> 'a Fmt.t -> ('a, 'b) t Fmt.t
+    val pp :
+      ?sep:(Format.formatter -> unit -> unit) ->
+      (Format.formatter -> 'a -> unit) ->
+      Format.formatter ->
+      ('a, 'b) t ->
+      unit
     (** Pretty-printer of {!t}. *)
 
-    val dump : 'a Fmt.t -> ('a, 'b) t Fmt.t
+    val dump :
+      (Format.formatter -> 'a -> unit) -> Format.formatter -> ('a, 'b) t -> unit
     (** Human-readable pretty-printer of {!t}. *)
 
     val unsafe_bigarray :
@@ -516,10 +534,16 @@ module Weighted = struct
     (** [fold f a q] is equivalent to [List.fold_left f a l], where [l] is the
        list of [q]'s elements. The queue remains unchanged. *)
 
-    val pp : ?sep:unit Fmt.t -> 'a Fmt.t -> ('a, 'b) t Fmt.t
+    val pp :
+      ?sep:(Format.formatter -> unit -> unit) ->
+      (Format.formatter -> 'a -> unit) ->
+      Format.formatter ->
+      ('a, 'b) t ->
+      unit
     (** Pretty-printer of {!t}. *)
 
-    val dump : 'a Fmt.t -> ('a, 'b) t Fmt.t
+    val dump :
+      (Format.formatter -> 'a -> unit) -> Format.formatter -> ('a, 'b) t -> unit
     (** Human-readable pretty-printer of {!t}. *)
 
     (** / **)

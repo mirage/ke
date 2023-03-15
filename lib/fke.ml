@@ -178,8 +178,8 @@ let length = function
   | Shallow (Two _) -> 2
   | Shallow (Three _) -> 3
 
-let pp ?sep pp_elt = Fmt.iter ?sep iter pp_elt
-let dump pp_elt = Fmt.Dump.iter iter (Fmt.any "fke") pp_elt
+let pp ?sep pp_elt = Minifmt.iter ?sep iter pp_elt
+let dump pp_elt = Minifmt.iter_dump iter (Minifmt.any "fke") pp_elt
 
 module Weighted = struct
   type ('a, 'b) t = {
@@ -217,8 +217,7 @@ module Weighted = struct
       match capacity with
       | None | Some 0 -> 1
       | Some n ->
-          if n < 0 then Fmt.invalid_arg "Rke.Weighted.create"
-          else to_power_of_two n
+          if n < 0 then invalid_arg "Rke.Weighted.create" else to_power_of_two n
     in
     ( {
         r = 0;
@@ -235,8 +234,7 @@ module Weighted = struct
     { r = t.r; w = t.w; c = t.c; v; k = t.k }
 
   let from v =
-    if not (is_power_of_two (Bigarray.Array1.dim v)) then
-      Fmt.invalid_arg "RBA.from";
+    if not (is_power_of_two (Bigarray.Array1.dim v)) then invalid_arg "RBA.from";
     let c = Bigarray.Array1.dim v in
     let k = Bigarray.Array1.kind v in
     { r = 0; w = 0; c; k; v }
@@ -347,6 +345,6 @@ module Weighted = struct
 
   let clear t = { t with r = 0; w = 0 }
   let unsafe_bigarray { v; _ } = v
-  let pp ?sep pp_elt = Fmt.iter ?sep iter pp_elt
-  let dump pp_elt = Fmt.Dump.iter iter (Fmt.any "fke:weighted") pp_elt
+  let pp ?sep pp_elt = Minifmt.iter ?sep iter pp_elt
+  let dump pp_elt = Minifmt.iter_dump iter (Minifmt.any "fke:weighted") pp_elt
 end

@@ -38,7 +38,7 @@ module Value = struct
       | 0 -> k (V Zero)
       | n -> go (fun (V n) -> k (V (Succ n))) (pred n)
     in
-    if n < 0 then Fmt.invalid_arg "Value.of_int" else go identity n
+    if n < 0 then invalid_arg "Value.of_int" else go identity n
 
   let to_int v =
     let rec go : type a. (int -> 'r) -> a value -> 'r =
