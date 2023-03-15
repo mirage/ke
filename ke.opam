@@ -23,7 +23,6 @@ depends: [
   "bechamel-notty"    {with-test}
   "bechamel-perf"     {with-test}
   "json-data-encoding" {with-test}
-  "core_bench"        {with-test & >= "v0.15"}
   "lwt"               {with-test}
   "crowbar"           {with-test}
   "rresult"           {with-test}
