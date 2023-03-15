@@ -16,14 +16,14 @@ run-test: [ "dune" "runtest" "-p" name "-j" jobs ]
 depends: [
   "ocaml"              {>= "4.08.0"}
   "dune"               {>= "2.0"}
-  "alcotest"           {with-test}
+  "alcotest"           {>= "1.7.0" & with-test}
   "bigstringaf"        {>= "0.9.0" & with-test}
   "bechamel"           {with-test}
   "bechamel-js"        {with-test}
   "json-data-encoding" {with-test}
   "lwt"                {with-test}
   "crowbar"            {with-test}
-  "rresult"            {with-test}
+  "rresult"            {>= "0.7.0" & with-test}
   "jsonm"              {with-test}
   "psq"                {with-test}
   "fmt"                {>= "0.8.7" & with-test}
