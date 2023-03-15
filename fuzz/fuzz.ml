@@ -128,7 +128,7 @@ let action_of_tree tree : Value.t Stack.t =
     Stack.(V Empty)
     lst
 
-(* XXX(dinosaure): [Stdlib.Queue] is oracle. *)
+(* XXX(dinosaure): [Stdlib.Queue] is the oracle. *)
 
 module Compare = struct
   exception Not_equal
