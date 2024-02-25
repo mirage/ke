@@ -20,8 +20,8 @@ is limited (only supports the types supported by [`Bigarray.kind`](https://v2.oc
 operations are: put some elements faster than a sequence of `Queue.push`, and
 get some elements faster than a sequence of `Queue.pop`.
 
-We extended implementations to have a limit of elements to store (see
-`Rke.Weighted` and `Fke.Weighted`). The purpose of it is to limit memory
+We provide extended implementations (`Rke.Weighted` and `Fke.Weighted`) with
+a limit on the number of elements stored. The purpose is to limit memory
 consumption of the queue when we use it in some contexts (like _encoder_).
 
 Again, as a part of the MirageOS project, `Ke` does not rely on C stubs,
