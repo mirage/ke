@@ -30,16 +30,16 @@ Author: Romain Calascibetta <romain.calascibetta@gmail.com>
 
 Documentation: https://mirage.github.io/ke/
 
-Notes about Implementations
-===========================
+Implementation notes
+====================
 
 The functional implementation `Fke` comes from Okazaki's queue
 implementation with GADT to discard impossible cases.
 
 `Rke`, `Rke.Weighted` and `Fke.Weighted` are limited by kind and follow Xen's
 implementation of the shared memory ring-buffer. The length of the internal buffer
-is, in any case, a power of two - that means, in some context, for a large
-number of elements, this kind of queue does not fit your requirements.
+is always a power of two - that means for a large number of elements
+this kind of queue may not fit your requirements.
 
 A fuzzer was made to compare the standard Queue (as an oracle) with `Rke` and
 `Fke`. We construct a set of actions (`push` and `pop`) and ensure (by GADT) to
