@@ -11,13 +11,13 @@ It is a little library with benchmark
 ([`bechamel`](https://github.com/dinosaure/bechamel.git) or `core_bench`),
 fuzzer and tests.
 
+We provide a functional interface `Fke` or an imperative interface `Rke`.
+
 From what we know, `Ke.Rke` is the faster implementation than `Queue` from the
 standard library or the `base` package. It is limited by some kind of data (see
 [`Bigarray.kind`]()) but enough for a lot of algorithms. The fast
 operation is to put some elements faster than a sequence of `Queue.push`, and
 get some elements faster than a sequence of `Queue.pop`.
-
-Then we provide a functional interface `Fke` or an imperative interface `Rke`.
 
 We extended implementations to have a limit of elements to store (see
 `Rke.Weighted` and `Fke.Weighted`). The purpose of it is to limit memory
