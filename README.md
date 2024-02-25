@@ -41,6 +41,6 @@ implementation of the shared memory ring-buffer. The length of the internal buff
 is always a power of two - that means for a large number of elements
 this kind of queue may not fit your requirements.
 
-A fuzzer was made to compare the standard Queue (as an oracle) with `Rke` and
+A fuzzer was made to compare the standard `Queue` (as an oracle) with `Rke` and
 `Fke`. We construct a set of actions (`push` and `pop`) and ensure (by GADT) to
 never `pop` an empty queue.
