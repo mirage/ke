@@ -14,8 +14,9 @@ a fuzzer and tests.
 We provide a functional interface `Fke` or an imperative interface `Rke`.
 
 From what we know, `Ke.Rke` is faster than `Queue` from the
-standard library or the `base` package. It is limited by some kind of data (see
-[`Bigarray.kind`]()) but enough for a lot of algorithms. The fast
+standard library or the `base` package. The type of data that it can store
+is limited (only supports the types supported by [`Bigarray.kind`](https://v2.ocaml.org/releases/5.1/api/Bigarray.html#TYPEkind))
+, but this is enough for a lot of algorithms. The fast
 operation is to put some elements faster than a sequence of `Queue.push`, and
 get some elements faster than a sequence of `Queue.pop`.
 
