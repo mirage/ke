@@ -7,9 +7,9 @@ Queue or FIFO is one of the most famous data-structure used in several
 algorithms. `Ke` provides some implementations of it in a functional or
 imperative way.
 
-It is a little library with benchmark
+It is a little library with a benchmark
 ([`bechamel`](https://github.com/dinosaure/bechamel.git) or `core_bench`),
-fuzzer and tests.
+a fuzzer and tests.
 
 We provide a functional interface `Fke` or an imperative interface `Rke`.
 
@@ -21,7 +21,7 @@ get some elements faster than a sequence of `Queue.pop`.
 
 We extended implementations to have a limit of elements to store (see
 `Rke.Weighted` and `Fke.Weighted`). The purpose of it is to limit memory
-consumption of queue when we use it in some contexts (like _encoder_).
+consumption of the queue when we use it in some contexts (like _encoder_).
 
 Again, as a part of the MirageOS project, `Ke` does not rely on C stubs,
 `Obj.magic` and so on.
@@ -37,10 +37,10 @@ The functional implementation `Fke` is come from the Okazaki's queue
 implementation with GADT to discard impossible cases.
 
 `Rke`, `Rke.Weighted` and `Fke.Weighted` was limited by kind and follow Xen's
-implementation of the shared memory ring-buffer. Length of the internal buffer
+implementation of the shared memory ring-buffer. The length of the internal buffer
 is, in any case, a power of two - that means, in some context, for a large
 number of elements, this kind of queue does not fit on your request.
 
-Fuzzer was made to compare the standard Queue (as an oracle) with `Rke` and
+A fuzzer was made to compare the standard Queue (as an oracle) with `Rke` and
 `Fke`. We construct a set of actions (`push` and `pop`) and ensure (by GADT) to
 never `pop` an empty queue.
