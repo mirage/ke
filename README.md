@@ -13,7 +13,7 @@ fuzzer and tests.
 
 From what we know, `Ke.Rke` is the faster implementation than `Queue` from the
 standard library or the `base` package. It is limited by some kind of data (see
-[`Bigarray.kind`]()) but enough for a large amount of algorithms. The fast
+[`Bigarray.kind`]()) but enough for a lot of algorithms. The fast
 operation is to put some elements faster than a sequence of `Queue.push`, and
 get some elements faster than a sequence of `Queue.pop`.
 
@@ -39,7 +39,7 @@ implementation with GADT to discard impossible cases.
 `Rke`, `Rke.Weighted` and `Fke.Weighted` was limited by kind and follow Xen's
 implementation of the shared memory ring-buffer. Length of the internal buffer
 is, in any case, a power of two - that means, in some context, for a large
-amount of elements, this kind of queue does not fit on your request.
+number of elements, this kind of queue does not fit on your request.
 
 Fuzzer was made to compare the standard Queue (as an oracle) with `Rke` and
 `Fke`. We construct a set of actions (`push` and `pop`) and ensure (by GADT) to
